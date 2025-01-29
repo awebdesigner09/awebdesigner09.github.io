@@ -10,8 +10,7 @@
     <link rel="icon" type="image/png" sizes="32x32" href="../../fav/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="../fav/../favicon-16x16.png">
     <link rel="manifest" href="../../fav/site.webmanifest">
-    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"></script>
-	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css" />
+    
   </head>
   <body>
   
@@ -97,94 +96,93 @@
 <div class="jumbotron">
   <div class="container text-center">
     <h1 class="text-info">Story Generator for Children</h1>      
-    <p>Generates text from speech or audio file. Feel free to record your own voice. 
-    <br>Based on <u>distil-whisper/distil-small.en</u> model</p>
-    <gradio-lite>
-    <gradio-requirements>
-    gradio_pdf
-    </gradio-requirements>
-    <gradio-file name="app.py" entrypoint>
-        import gradio as gr
-        import requests
-
-        from gradio_pdf import PDF
-
-        def generate_story(topic_count, age_group, theme, sentence_count):
-            # Placeholder for actual API call
-            # call_api_and_render_text,
-            try:
-                api_url = "https://webcodeagents.onrender.com/kickoffStoryFlow"
-                # Make an API call
-                response = requests.post(url=api_url,json={"topic_count": topic_count, "age_group": f"{age_group}", "theme": f"{theme}", "sentence_count": sentence_count})
-                response.raise_for_status()  # Raise an error for bad status codes
-                
-                with open("stories.pdf", 'wb') as file:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        file.write(chunk)
-                # print(f'Response.content:{response.content} \n Response.url:{response.url}')
-                return ["stories.pdf",gr.DownloadButton(label="Download PDF",value="stories.pdf", visible=True)]  # Return the response body as text
-            except requests.exceptions.RequestException as e:
-                return [f"RequestError: {str(e)}"]
-            except Exception as ex:
-                return [f"Error: {str(ex)}"]
-            
-        def getPDF(topic_count, age_group, theme, sentence_count):
-            # Placeholder for actual API call
-            # call_api_and_render_text,
-            try:
-                api_url = "http://127.0.0.1:8000/getPdfFile"
-                # Make an API call
-                response = requests.get(url=api_url)
-                response.raise_for_status()  # Raise an error for bad status codes
-
-                with open("stories.pdf", 'wb') as file:
-                    for chunk in response.iter_content(chunk_size=8192):
-                        file.write(chunk)
-                # print(f'Response.content:{response.content} \n Response.url:{response.url}')
-                return ["stories.pdf",gr.DownloadButton(label="Download PDF",value="stories.pdf", visible=True)]  # Return the response body as text
-            except requests.exceptions.RequestException as e:
-                return [f"RequestError: {str(e)}"]
-            except Exception as ex:
-                return [f"Error: {str(ex)}"]
-
-
-        demo = gr.Interface(
-            fn=generate_story,
-            inputs=[
-                gr.Dropdown(
-                    label="Number of Topics", 
-                    choices=[2, 4], 
-                    value=2
-                ),
-                gr.Radio(
-                    label="Age Group", 
-                    choices=["6 to 8 years", "8 to 10 years", "children"], 
-                    value="6 to 8 years"
-                ),
-                gr.Dropdown(
-                    label="Story Theme", 
-                    choices=["Fable", "Inspirational", "Space Adventure"], 
-                    value="Fable"
-                ),
-                gr.Radio(
-                    label="Sentence Count", 
-                    choices=[20, 40], 
-                    value=20
-                ,)
-
-            ],
-            outputs=[PDF(label="Generated Stories",interactive=False),
-                    gr.DownloadButton(label="Download PDF",value="stories.pdf", visible=False)],
-            # outputs=gr.Textbox(label="Generated Story"),
-            title="Story Generation for Children",
-            description="Customize your story generation parameters"
-        )
-
-
-        demo.launch()
-    </gradio-file> 
-    </gradio-lite>
-    <br>P.S. if you see loading.. then application might be sleeping. So, refresh and try after 10 minutes.
+    <p>Generates stories and images for Children. 
+    <br>uses <u>Multi-Agentic Pipeline with CrewAI framework</u> </p>
+    <!-- Add this anywhere in your HTML body -->
+    <div class="container mt-4">
+        <div class="card">
+          <div class="card-body">
+            <form id="storyForm" class="needs-validation" novalidate>
+              <!-- Topic Count -->
+              <div class="mb-3">
+                <label for="topicCount" class="form-label">Number of Topics:</label>
+                <select class="form-select" id="topicCount" required>
+                  <option value="2">2</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
+      
+              <!-- Age Group -->
+              <div class="mb-4">
+                <label class="form-label">Age Group:</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="ageGroup" id="age1" value="6 to 8 years" checked>
+                  <label class="form-check-label" for="age1">6 to 8 years</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="ageGroup" id="age2" value="8 to 10 years">
+                  <label class="form-check-label" for="age2">8 to 10 years</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="ageGroup" id="age3" value="children">
+                  <label class="form-check-label" for="age3">Children</label>
+                </div>
+              </div>
+      
+              <!-- Story Theme -->
+              <div class="mb-3">
+                <label for="theme" class="form-label">Story Theme:</label>
+                <select class="form-select" id="theme" required>
+                  <option value="Fabel">Fabel</option>
+                  <option value="Inspirational">Inspirational</option>
+                  <option value="Space Adventure">Space Adventure</option>
+                </select>
+              </div>
+      
+              <!-- Sentence Count -->
+              <div class="mb-4">
+                <label class="form-label">Sentence Count:</label>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="sentenceCount" id="count1" value="20" checked>
+                  <label class="form-check-label" for="count1">20</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="sentenceCount" id="count2" value="40">
+                  <label class="form-check-label" for="count2">40</label>
+                </div>
+              </div>
+      
+              <button type="submit" class="btn btn-primary w-100">Generate Story</button>
+            </form>
+      
+            <div id="result" class="mt-4" style="display:none;">
+              <div class="card">
+                <div class="card-body">
+                  <iframe id="pdfViewer" class="w-100" height="500px"></iframe>
+                  <a id="downloadLink" class="btn btn-outline-secondary mt-3 d-none">Download PDF</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+    <!-- Add this to your HTML -->
+<div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(255,255,255,0.8); z-index: 1000;">
+    <div class="d-flex justify-content-center align-items-center h-100">
+      <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <p class="mt-2 text-muted">Generating your story...</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Add this error alert container -->
+  <div id="errorAlert" class="alert alert-danger d-none position-fixed top-0 start-50 translate-middle-x mt-3" style="z-index: 1001;"></div>
+    
+      
+    <br>
   </div>
 </div>
 
@@ -233,5 +231,77 @@ setTheme();
 document.querySelectorAll('.theme-switch').forEach(e => e.addEventListener('click', () => setTheme(e.getAttribute('data-bs-theme-value'))));
 window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => setTheme());
       </script>
+
+<script>
+    document.getElementById('storyForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const form = this;
+      const loadingOverlay = document.getElementById('loadingOverlay');
+      const errorAlert = document.getElementById('errorAlert');
+      
+      // Lock controls and show loading
+      loadingOverlay.classList.remove('d-none');
+      errorAlert.classList.add('d-none');
+      toggleFormControls(form, true);
+    
+      const formData = {
+        topic_count: document.getElementById('topicCount').value,
+        age_group: document.querySelector('input[name="ageGroup"]:checked').value,
+        theme: document.getElementById('theme').value,
+        sentence_count: document.querySelector('input[name="sentenceCount"]:checked').value
+      };
+    
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', 'https://webcodeagents.onrender.com/kickoffStoryFlow', true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.responseType = 'blob';
+    
+      xhr.onload = function() {
+        loadingOverlay.classList.add('d-none');
+        toggleFormControls(form, false);
+        
+        if (this.status === 200) {
+          const blob = this.response;
+          const url = URL.createObjectURL(blob);
+          
+          document.getElementById('result').style.display = 'block';
+          document.getElementById('pdfViewer').src = url;
+          document.getElementById('downloadLink').href = url;
+          document.getElementById('downloadLink').classList.remove('d-none');
+        } else {
+          showError('Error generating story: ' + this.statusText);
+        }
+      };
+    
+      xhr.onerror = function() {
+        loadingOverlay.classList.add('d-none');
+        toggleFormControls(form, false);
+        showError('Network error - please check your connection');
+      };
+    
+      xhr.ontimeout = function() {
+        loadingOverlay.classList.add('d-none');
+        toggleFormControls(form, false);
+        showError('Request timed out - please try again');
+      };
+    
+      xhr.send(JSON.stringify(formData));
+    });
+    
+    function toggleFormControls(form, disabled) {
+      Array.from(form.elements).forEach(element => {
+        element.disabled = disabled;
+      });
+    }
+    
+    function showError(message) {
+      const errorAlert = document.getElementById('errorAlert');
+      errorAlert.textContent = message;
+      errorAlert.classList.remove('d-none');
+      setTimeout(() => errorAlert.classList.add('d-none'), 5000);
+    }
+    </script>
+  
+    
     </body>
 </html>
