@@ -8,8 +8,10 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="apple-touch-icon" sizes="180x180" href="../../fav/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="../../fav/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="../../fav/favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../fav/../favicon-16x16.png">
     <link rel="manifest" href="../../fav/site.webmanifest">
+    <script type="module" crossorigin src="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.js"></script>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gradio/lite/dist/lite.css" />
   </head>
   <body>
   
@@ -37,10 +39,10 @@
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle active" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">My Work<span class="visually-hidden">(current)</span></a>
               <div class="dropdown-menu">
-                <a class="dropdown-item active" href="#">Image Captioning</a>
-                <a class="dropdown-item" href="../work/hf-speech-transcribe.html">Audio Trascribe</a>
+                <a class="dropdown-item" href="../work/hf-image-captioning.html">Image Captioning</a>
+                <a class="dropdown-item" href="#">Audio Trascribe</a>
                 <a class="dropdown-item" href="../work/hf-chatbot.html">Friendly chatbot</a>
-                <a class="dropdown-item" href="../work/crewai-story-gen.html">Story generator for children</a>
+                <a class="dropdown-item active" href="#">Story generator for children</a>
                 <div class="dropdown-divider"></div>
                 <a class="dropdown-item" href="#">More..</a>
               </div>
@@ -94,12 +96,94 @@
     <div class="container">
 <div class="jumbotron">
   <div class="container text-center">
-    <h1 class="text-info">Image Captioning</h1>      
-    <p>Generates creative caption for uploaded image. You can use captured pictures from camera.
-    <br>based on <u>Salesforce/blip-image-captioning-base</u> model</p>
-    
-    <script type="module" src="https://gradio.s3-us-west-2.amazonaws.com/5.5.0/gradio.js"></script>
-    <gradio-app src="https://awebdesigner09-blip-image-captioning.hf.space"></gradio-app>
+    <h1 class="text-info">Story Generator for Children</h1>      
+    <p>Generates text from speech or audio file. Feel free to record your own voice. 
+    <br>Based on <u>distil-whisper/distil-small.en</u> model</p>
+    <gradio-lite>
+    <gradio-requirements>
+    gradio_pdf
+    </gradio-requirements>
+    <gradio-file name="app.py" entrypoint>
+        import gradio as gr
+        import requests
+
+        from gradio_pdf import PDF
+
+        def generate_story(topic_count, age_group, theme, sentence_count):
+            # Placeholder for actual API call
+            # call_api_and_render_text,
+            try:
+                api_url = "https://webcodeagents.onrender.com/kickoffStoryFlow"
+                # Make an API call
+                response = requests.post(url=api_url,json={"topic_count": topic_count, "age_group": f"{age_group}", "theme": f"{theme}", "sentence_count": sentence_count})
+                response.raise_for_status()  # Raise an error for bad status codes
+                
+                with open("stories.pdf", 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        file.write(chunk)
+                # print(f'Response.content:{response.content} \n Response.url:{response.url}')
+                return ["stories.pdf",gr.DownloadButton(label="Download PDF",value="stories.pdf", visible=True)]  # Return the response body as text
+            except requests.exceptions.RequestException as e:
+                return [f"RequestError: {str(e)}"]
+            except Exception as ex:
+                return [f"Error: {str(ex)}"]
+            
+        def getPDF(topic_count, age_group, theme, sentence_count):
+            # Placeholder for actual API call
+            # call_api_and_render_text,
+            try:
+                api_url = "http://127.0.0.1:8000/getPdfFile"
+                # Make an API call
+                response = requests.get(url=api_url)
+                response.raise_for_status()  # Raise an error for bad status codes
+
+                with open("stories.pdf", 'wb') as file:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        file.write(chunk)
+                # print(f'Response.content:{response.content} \n Response.url:{response.url}')
+                return ["stories.pdf",gr.DownloadButton(label="Download PDF",value="stories.pdf", visible=True)]  # Return the response body as text
+            except requests.exceptions.RequestException as e:
+                return [f"RequestError: {str(e)}"]
+            except Exception as ex:
+                return [f"Error: {str(ex)}"]
+
+
+        demo = gr.Interface(
+            fn=generate_story,
+            inputs=[
+                gr.Dropdown(
+                    label="Number of Topics", 
+                    choices=[2, 4], 
+                    value=2
+                ),
+                gr.Radio(
+                    label="Age Group", 
+                    choices=["6 to 8 years", "8 to 10 years", "children"], 
+                    value="6 to 8 years"
+                ),
+                gr.Dropdown(
+                    label="Story Theme", 
+                    choices=["Fable", "Inspirational", "Space Adventure"], 
+                    value="Fable"
+                ),
+                gr.Radio(
+                    label="Sentence Count", 
+                    choices=[20, 40], 
+                    value=20
+                ,)
+
+            ],
+            outputs=[PDF(label="Generated Stories",interactive=False),
+                    gr.DownloadButton(label="Download PDF",value="stories.pdf", visible=False)],
+            # outputs=gr.Textbox(label="Generated Story"),
+            title="Story Generation for Children",
+            description="Customize your story generation parameters"
+        )
+
+
+        demo.launch()
+    </gradio-file> 
+    </gradio-lite>
     <br>P.S. if you see loading.. then application might be sleeping. So, refresh and try after 10 minutes.
   </div>
 </div>
@@ -107,7 +191,6 @@
 </div>
 <footer id="footer" class="container text-center  my-2 border-top">
 
-  
   <div class="row justify-content-end">
     <div class="col">
       <p>
