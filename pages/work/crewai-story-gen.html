@@ -94,79 +94,90 @@
     </nav>
     <div class="container">
 <div class="jumbotron">
-  <div class="container text-center">
+  <div class="container">
+    <div class="text-center">
     <h1 class="text-info">Story Generator for Children</h1>      
     <p>Generates stories and images for Children. 
-    <br>uses <u>Multi-Agentic Pipeline with CrewAI framework</u> </p>
-    <!-- Add this anywhere in your HTML body -->
-    <div class="container mt-4">
-        <div class="card">
-          <div class="card-body">
-            <form id="storyForm" class="needs-validation" novalidate>
-              <!-- Topic Count -->
-              <div class="mb-3">
-                <label for="topicCount" class="form-label">Number of Topics:</label>
-                <select class="form-select" id="topicCount" required>
-                  <option value="2">2</option>
-                  <option value="4">4</option>
-                </select>
-              </div>
-      
-              <!-- Age Group -->
-              <div class="mb-4">
-                <label class="form-label">Age Group:</label>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="ageGroup" id="age1" value="6 to 8 years" checked>
-                  <label class="form-check-label" for="age1">6 to 8 years</label>
+    <br>uses Multi-Agentic Pipeline with <u>CrewAI</u> framework and Diffusion models. </p>
+    </div>
+    <div class="container">
+      <div class="row align-items-start">
+        <div class="col">
+          <div class="card">
+            <div class="card-header">Parameters</div>
+            <div class="card-body">
+              <form id="storyForm" class="needs-validation" novalidate>
+                <!-- Topic Count -->
+                <div class="mb-3">
+                  <label for="topicCount" class="form-label">Number of Topics:</label>
+                  <select class="form-select" id="topicCount" required>
+                    <option value="2">2</option>
+                    <option value="4">4</option>
+                  </select>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="ageGroup" id="age2" value="8 to 10 years">
-                  <label class="form-check-label" for="age2">8 to 10 years</label>
+        
+                <!-- Age Group -->
+                <div class="mb-4">
+                  <label class="form-label">Age Group:</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="ageGroup" id="age1" value="6 to 8 years" checked>
+                    <label class="form-check-label" for="age1">6 to 8 years</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="ageGroup" id="age2" value="8 to 10 years">
+                    <label class="form-check-label" for="age2">8 to 10 years</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="ageGroup" id="age3" value="children">
+                    <label class="form-check-label" for="age3">Children</label>
+                  </div>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="ageGroup" id="age3" value="children">
-                  <label class="form-check-label" for="age3">Children</label>
+        
+                <!-- Story Theme -->
+                <div class="mb-3">
+                  <label for="theme" class="form-label">Story Theme:</label>
+                  <select class="form-select" id="theme" required>
+                    <option value="Fabel">Fabel</option>
+                    <option value="Inspirational">Inspirational</option>
+                    <option value="Space Adventure">Space Adventure</option>
+                  </select>
                 </div>
-              </div>
-      
-              <!-- Story Theme -->
-              <div class="mb-3">
-                <label for="theme" class="form-label">Story Theme:</label>
-                <select class="form-select" id="theme" required>
-                  <option value="Fabel">Fabel</option>
-                  <option value="Inspirational">Inspirational</option>
-                  <option value="Space Adventure">Space Adventure</option>
-                </select>
-              </div>
-      
-              <!-- Sentence Count -->
-              <div class="mb-4">
-                <label class="form-label">Sentence Count:</label>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="sentenceCount" id="count1" value="20" checked>
-                  <label class="form-check-label" for="count1">20</label>
+        
+                <!-- Sentence Count -->
+                <div class="mb-4">
+                  <label class="form-label">Sentence Count:</label>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="sentenceCount" id="count1" value="20" checked>
+                    <label class="form-check-label" for="count1">20</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="sentenceCount" id="count2" value="40">
+                    <label class="form-check-label" for="count2">40</label>
+                  </div>
                 </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="sentenceCount" id="count2" value="40">
-                  <label class="form-check-label" for="count2">40</label>
-                </div>
-              </div>
-      
-              <button type="submit" class="btn btn-primary w-100">Generate Story</button>
-            </form>
-      
-            <div id="result" class="mt-4" style="display:none;">
-              <div class="card">
-                <div class="card-body">
-                  <iframe id="pdfViewer" class="w-100" height="500px"></iframe>
-                  <a id="downloadLink" class="btn btn-outline-secondary mt-3 d-none">Download PDF</a>
+                <button type="submit" class="btn btn-primary w-100">Generate Story</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="col">
+            <div class="card">
+              <div class="card-header">Output</div>
+              <div class="card-body">
+                <div id="result" class="mt-4" style="display:none;"></div>
+                <iframe id="pdfViewer" class="w-100" height="450px"></iframe>
+                <a id="downloadLink" class="btn btn-outline-secondary mt-3 d-none">Download PDF</a>
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        
+        
+      </div>
     </div>
-    <!-- Add this to your HTML -->
+    
+    
+    
 <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" style="background: rgba(255,255,255,0.8); z-index: 1000;">
     <div class="d-flex justify-content-center align-items-center h-100">
       <div class="text-center">
