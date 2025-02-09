@@ -168,7 +168,7 @@
                     <label class="form-check-label" for="count3">60</label>
                   </div>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Generate Story</button>
+                <button type="submit" class="btn btn-primary w-100" disabled>Generate Story (disabled) </button>
               </form>
             </div>
           </div>
@@ -259,6 +259,8 @@ window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', ()
 <script>
     document.getElementById('storyForm').addEventListener('submit', function(e) {
       e.preventDefault();
+      showError('Story generation diabled. Contact Naga Sai.');
+      return false;
       const form = this;
       const loadingOverlay = document.getElementById('loadingOverlay');
       const errorAlert = document.getElementById('errorAlert');
