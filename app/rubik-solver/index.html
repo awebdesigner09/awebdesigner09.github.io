@@ -30,13 +30,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.min.js"></script>
     <!-- OrbitControls for camera interaction -->
     <script type="module">
+        // Need to import OrbitControls as a module
         import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
-        window.OrbitControls = OrbitControls; // Make it globally accessible if needed
+        window.OrbitControls = OrbitControls; // Make it globally accessible for the main script
     </script>
 
     <!-- Main Script -->
-    <script type="module">
-        import './script.js';
-    </script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
