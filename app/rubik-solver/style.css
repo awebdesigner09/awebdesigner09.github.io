@@ -1,76 +1,119 @@
 body {
+    font-family: sans-serif;
     margin: 0;
     overflow: hidden;
-    font-family: sans-serif;
     background-color: #f0f0f0;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Align items to the top */
+    align-items: center;
     height: 100vh;
 }
 
 #container {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-    max-width: 1000px; /* Max width for controls/instructions */
-    padding-top: 10px;
+    width: 95vw;
+    height: 90vh;
+    background-color: #fff;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 8px;
 }
 
 #controls {
-    background-color: #ddd;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 10px;
+    width: 300px;
+    padding: 20px;
+    box-sizing: border-box;
+    border-right: 1px solid #ccc;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+#controls h1, #controls h2 {
     text-align: center;
+    margin-top: 0;
 }
 
-#controls label,
-#controls select,
-#controls button {
-    margin: 0 5px;
-}
-
-#instructions {
-    background-color: #eee;
-    padding: 10px;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    min-height: 40px; /* Ensure space for text */
-    width: 80%;
-    max-width: 600px;
-    text-align: center;
-}
-
-#instructionText {
-    margin: 0;
-    transition: color 0.3s ease; /* Smooth color transition */
-}
-
-#instructionText.correct {
-    color: green;
+#controls label {
+    margin-top: 10px;
     font-weight: bold;
 }
 
-#instructionText.pending {
-    color: orange;
-}
-
-#instructionText.default {
-    color: black;
-}
-
-
-#rendererContainer {
-    width: 80vw; /* Responsive width */
-    height: 70vh; /* Responsive height */
-    max-width: 800px;
-    max-height: 600px;
+#controls select, #controls button {
+    padding: 10px;
+    margin-top: 5px;
+    margin-bottom: 10px;
     border: 1px solid #ccc;
-    position: relative; /* Needed for potential absolute positioning inside */
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-canvas {
+#controls button:hover {
+    background-color: #eee;
+}
+#controls button:active {
+    background-color: #ddd;
+}
+#controls button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+
+#instructions {
+    margin-top: 20px;
+    flex-grow: 1; /* Take remaining space */
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+
+#instruction-list {
+     font-size: 0.9em;
+     max-height: 300px; /* Limit height if needed */
+     overflow-y: auto;
+     border: 1px solid #eee;
+     padding: 10px;
+     background-color: #f9f9f9;
+     min-height: 50px; /* Ensure it's visible */
+}
+
+#instruction-list .step {
+    padding: 5px;
+    margin-bottom: 3px;
+    border-radius: 3px;
+    background-color: #fff;
+    transition: background-color 0.3s ease;
+}
+#instruction-list .step.current {
+    background-color: #e0f7fa; /* Light blue for current step */
+    font-weight: bold;
+}
+#instruction-list .step.completed {
+    background-color: #c8e6c9; /* Light green for completed */
+    text-decoration: line-through;
+    color: #555;
+}
+
+
+#canvas-container {
+    flex-grow: 1; /* Take remaining space */
+    position: relative; /* Needed for canvas positioning */
+    display: flex; /* Use flex to center canvas if needed */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; /* Clip canvas if it exceeds container */
+}
+
+#rubiks-canvas {
     display: block; /* Remove extra space below canvas */
+    max-width: 100%;
+    max-height: 100%;
+}
+
+#status {
+    margin-top: auto; /* Push status to the bottom */
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    font-size: 0.8em;
+    color: #555;
+    text-align: center;
 }
