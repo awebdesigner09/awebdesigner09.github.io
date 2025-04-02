@@ -760,9 +760,18 @@ function init() {
          }
     });
      resetViewButton.addEventListener('click', () => {
-        controls.reset(); // Resets camera to saved position
-        camera.position.set(4, 4, 6); // Or set to desired default
-        camera.lookAt(scene.position);
+        // 1. Reset OrbitControls internal state (good practice)
+        controls.reset();
+
+        // 2. Explicitly set the desired camera position
+        camera.position.set(4, 4, 6);
+
+        // 3. Explicitly set the controls' target (where the camera looks)
+        //    scene.position is usually (0,0,0) by default
+        controls.target.set(scene.position.x, scene.position.y, scene.position.z);
+
+        // 4. Update the controls to reflect the changes immediately
+        controls.update();
     });
 
 
