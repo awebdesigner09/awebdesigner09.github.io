@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Rubik's Cube</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <label for="cubeType">Cube Type:</label>
+            <select id="cubeType">
+                <option value="3" selected>3x3x3</option>
+                <!-- <option value="2">2x2x2</option> -->
+                <!-- <option value="4">4x4x4</option> -->
+            </select>
+            <button id="scrambleBtn">Scramble</button>
+            <button id="solveBtn">Solve Step-by-Step</button>
+            <button id="learnBtn">Learn to Solve</button>
+        </div>
+        <div id="instructions">
+            <p id="instructionText">Instructions will appear here.</p>
+        </div>
+        <div id="rendererContainer"></div>
+    </div>
+
+    <!-- Include Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.min.js"></script>
+    <!-- OrbitControls for camera interaction -->
+    <script type="module">
+        import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js';
+        window.OrbitControls = OrbitControls; // Make it globally accessible if needed
+    </script>
+
+    <!-- Main Script -->
+    <script type="module">
+        import './script.js';
+    </script>
+</body>
+</html>
