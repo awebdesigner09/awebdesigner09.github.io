@@ -277,9 +277,9 @@ function rotateLayer(axis, layerIndex, angle, duration = 300, onComplete = null)
                 cubie.position.y = Math.round(cubie.position.y / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
                 cubie.position.z = Math.round(cubie.position.z / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
                 // Refined Position Snapping (considering the offset):
-                // cubie.position.x = Math.round((cubie.position.x + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
-                // cubie.position.y = Math.round((cubie.position.y + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
-                // cubie.position.z = Math.round((cubie.position.z + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                cubie.position.x = Math.round((cubie.position.x + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                cubie.position.y = Math.round((cubie.position.y + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                cubie.position.z = Math.round((cubie.position.z + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
                 // ^^ Let's try the simple rounding first. ^^
             
             });
@@ -389,36 +389,41 @@ function performMove(axis, layer, angle, moveNotation, calledFrom = 'unknown') {
 function scrambleCube() {
     if (isAnimating) return;
 
-    // --- Add check here ---
+    // --- Check if internal state is ready ---
     if (!isSolverInitialized || !currentInternalCubeState) {
         console.error("Cannot scramble: Solver or internal state not ready.");
         updateStatus("Error: Cannot scramble now.");
-        return;
+        // Optionally, try to re-initialize if null:
+        // if (!currentInternalCubeState && isSolverInitialized) {
+        //     console.log("Attempting to reinitialize internal state before scramble.");
+        //     currentInternalCubeState = new min2phase.CubieCube();
+        // } else {
+        //     return; // Still cannot proceed
+        // }
+         return; // Prevent scrambling if state isn't ready
     }
     // --- End check ---
 
-    // Reset learn state etc.
-    resetState(); // Clears instructions, flags - doesn't reset internal state here
+    resetState(); // Clears UI/learn state etc.
 
-    const baseMoves = ["U", "R", "F", "D", "L", "B"]; // Base letters only
+    const baseMoves = ["U", "R", "F", "D", "L", "B"];
     const scrambleSequence = []; // For visual animation
     const scrambleLength = 20;
 
     updateStatus("Scrambling...");
     disableControls();
 
-    // --- >>> Apply scramble moves to the INTERNAL state FIRST <<< ---
-    const tempCube = new min2phase.CubieCube();
-    // Create a fresh internal solved state for scrambling logic ONLY
-    let scrambleInternalState = new min2phase.CubieCube();
-    console.log("Applying scramble to internal state...");
+    // --- >>> Apply scramble moves directly to the CURRENT internal state <<< ---
+    const tempCube = new min2phase.CubieCube(); // Helper for multiplication
+    console.log("Applying scramble to *current* internal state...");
 
     for (let i = 0; i < scrambleLength; i++) {
         const base = baseMoves[Math.floor(Math.random() * baseMoves.length)];
         const modIndex = Math.floor(Math.random() * 3); // 0: normal, 1: 2, 2: prime
         let move = ""; // This is the move string for internal lookup and visual sequence
 
-        if (modIndex === 0) move = base + " ";
+        // Ensure move format matches min2phase.move2str (e.g., "U " for single U)
+        if (modIndex === 0) move = base + " "; // Add space for single moves if required by move2str format
         else if (modIndex === 1) move = base + "2";
         else move = base + "'";
 
@@ -426,29 +431,27 @@ function scrambleCube() {
 
         const moveCode = min2phase.move2str.indexOf(move);
          if (moveCode !== -1 && min2phase.moveCube[moveCode]) {
-            // Apply move to the temporary scramble state tracker
-            min2phase.CubieCube.CornMult(scrambleInternalState, min2phase.moveCube[moveCode], tempCube);
-            min2phase.CubieCube.EdgeMult(scrambleInternalState, min2phase.moveCube[moveCode], tempCube);
-            scrambleInternalState.init(tempCube.ca, tempCube.ea); // Update temp state
+            // Apply move directly to currentInternalCubeState using the tempCube helper
+            min2phase.CubieCube.CornMult(currentInternalCubeState, min2phase.moveCube[moveCode], tempCube);
+            min2phase.CubieCube.EdgeMult(currentInternalCubeState, min2phase.moveCube[moveCode], tempCube);
+            currentInternalCubeState.init(tempCube.ca, tempCube.ea); // Update currentInternalCubeState
         } else {
-             console.warn(`Scramble move '${move}' not found in min2phase.move2str - Skipping internal update for this move.`);
+             console.warn(`Scramble move '${move}' (code: ${moveCode}) not found in min2phase.move2str or moveCube - Skipping internal update for this move.`);
         }
     }
-    // --- Assign the final scrambled state to the main state variable ---
-    currentInternalCubeState = scrambleInternalState;
+    // --- No need to reassign currentInternalCubeState, it was updated in place ---
     console.log("Internal state updated after scramble.");
     console.log("Final Scrambled Facelet State (from internal):", currentInternalCubeState.toFaceCube());
     console.log("Visual Scramble Sequence:", scrambleSequence.join(' '));
     // --- End internal state update ---
 
 
-    // Apply scramble moves visually (starting from solved visual state)
-    
+    // Apply scramble moves visually (starting from the current visual state)
     let currentMove = 0;
     function applyNextVisualMove() {
         if (currentMove < scrambleSequence.length) {
             const move = scrambleSequence[currentMove++]; // Get the correctly formatted move
-            const trimmedMove = move.trim(); // Trim for visual lookup if needed
+            const trimmedMove = move.trim(); // Trim for visual lookup
             const visualParams = moveMap[trimmedMove];
 
             if (!visualParams) {
@@ -457,14 +460,26 @@ function scrambleCube() {
                 return;
             }
 
+            const duration = 75; // Slightly faster scramble animation
+
+             // Handle double moves visually correctly
              if (trimmedMove.endsWith('2')) {
-                 const singleMove = trimmedMove.substring(0, 1);
-                 const singleParams = moveMap[singleMove];
-                 rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 50, () => {
-                    rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 50, applyNextVisualMove);
-                });
+                 // Find the base move (e.g., 'R' from 'R2')
+                 const singleMoveNotation = trimmedMove.substring(0, 1);
+                 const singleParams = moveMap[singleMoveNotation];
+                 if (singleParams) {
+                     // Perform the first 90-degree turn
+                     rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, duration / 2, () => {
+                         // Perform the second 90-degree turn upon completion of the first
+                         rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, duration / 2, applyNextVisualMove);
+                     });
+                 } else {
+                     console.warn(`Cannot visually process double move for base ${singleMoveNotation}`);
+                     applyNextVisualMove(); // Skip if base move unknown
+                 }
              } else {
-                 rotateLayer(visualParams.axis, visualParams.layer, visualParams.angle, 75, applyNextVisualMove);
+                 // Single or prime move
+                 rotateLayer(visualParams.axis, visualParams.layer, visualParams.angle, duration, applyNextVisualMove);
              }
         } else {
              updateStatus("Scrambled. Ready.");
@@ -919,6 +934,9 @@ function determineAndPerformDragMove(intersectData, dragVector) {
 
      // --- Convert rotation parameters to standard move notation for display/learn mode ---
     const visualMoveNotation = convertRotationToMoveNotation(rotationAxis, layerIndex, direction); // Still needed for learn mode check maybe?
+    if(visualMoveNotation == null){
+        return; // Invalid move notation, do not proceed
+    }
     const rotationAngle = direction * Math.PI / 2; // Calculate angle for visual rotation
 
     console.log(`Detected Drag Move: Axis=${rotationAxis}, Layer=${layerIndex}, Angle=${rotationAngle.toFixed(2)}, Notation=${visualMoveNotation}`);
@@ -1020,18 +1038,31 @@ function init() {
              startLearnMode();
          }
     });
-    resetViewButton.addEventListener('click', () => {
-        controls.reset();
-        camera.position.set(4, 4, 6);
-        controls.target.set(scene.position.x, scene.position.y, scene.position.z);
-        controls.update();
-        if (!isAnimating) {
-            updateStatus("Resetting cube state...");
-            createCube(); // Re-creates visual cube & resets internal state
-            resetState(); // Clear instructions, flags etc.
-            updateStatus("Ready");
-        }
-    });
+    // resetViewButton.addEventListener('click', () => {
+    //     controls.reset();
+    //     camera.position.set(4, 4, 6);
+    //     controls.target.set(scene.position.x, scene.position.y, scene.position.z);
+    //     controls.update();
+    
+    //     if (!isAnimating) {
+    //         updateStatus("Resetting cube state...");
+    
+    //         // --- >>> ADD THIS LINE <<< ---
+    //         TWEEN.removeAll(); // Stop all active tweens immediately
+    
+    //         createCube(); // Re-creates visual cube & resets internal state
+    //         resetState(); // Clear instructions, flags etc.
+    //         updateStatus("Ready");
+    //     } else {
+    //         // Optional: Handle the case where reset is clicked DURING an animation
+    //         // Maybe just reset the view without touching the cube state,
+    //         // or force stop the animation first.
+    //         console.log("Cannot reset cube state while animating. View reset only.");
+    //         // TWEEN.removeAll(); // Or maybe stop animation here too?
+    //         // isAnimating = false;
+    //         updateStatus("Animation in progress. View reset.");
+    //     }
+    // });
 
     // Use pointer events for better touch/mouse compatibility
     canvas.addEventListener('pointerdown', onPointerDown);
