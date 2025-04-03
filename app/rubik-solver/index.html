@@ -1,15 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-S3VDZMTLTT"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-S3VDZMTLTT');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Rubik's Cube</title>
+    <title>Naga Sai - Rubik's Cube Solver</title>
+    <link href="../../static/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <link rel="apple-touch-icon" sizes="180x180" href="../../fav/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="../../fav/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="../../fav/favicon-16x16.png">
+    <link rel="manifest" href="../../fav/site.webmanifest">
 </head>
 <body>
     <div id="container">
         <div id="controls">
-            <h1>Rubik's Cube</h1>
+            <h1 class="navbar-brand">Rubik's Cube Solver</h1>
+            <p class="nav-item">
+                <a class="nav-link" href="https://github.com/cs0x7f/min2phase.js" rel="nofollow noopener" target="_blank">powered by - min2phase.js</a>
+            </p>
             <button id="scramble-button">Scramble</button>
             <button id="solve-button">Solve Step-by-Step</button>
             <button id="learn-button">Learn to Solve</button>
