@@ -53,10 +53,9 @@ body.dark-mode {
 body {
     font-family: sans-serif;
     margin: 0;
-    overflow: hidden;
+    overflow: hidden; /* Prevent body scrolling */
     background-color: var(--bg-color);
     color: var(--text-color);
-    /* Removed flex centering */
     height: 100vh;
     width: 100vw; /* Ensure body takes full width */
     transition: background-color 0.3s ease, color 0.3s ease;
@@ -67,21 +66,21 @@ body {
     width: 100vw;  /* Fill viewport width */
     height: 100vh; /* Fill viewport height */
     background-color: var(--container-bg);
-    /* Removed box-shadow and border-radius */
     transition: background-color 0.3s ease;
 }
 
 #controls {
-    width: 280px; /* Slightly narrower? Adjust as needed */
+    width: 280px; /* Default width for larger screens */
     padding: 20px;
     box-sizing: border-box;
-    /* Removed border-right */
     background-color: var(--controls-bg);
     display: flex;
     flex-direction: column;
-    overflow-y: auto;
-    transition: background-color 0.3s ease;
+    overflow-y: auto; /* Allow vertical scroll if content overflows */
+    transition: background-color 0.3s ease, width 0.3s ease, height 0.3s ease;
+    flex-shrink: 0; /* Prevent controls from shrinking */
     z-index: 5; /* Ensure controls are conceptually above canvas container background */
+    border-right: 1px solid var(--border-color); /* Add border for desktop */
 }
 
 #controls h1 {
@@ -89,6 +88,7 @@ body {
     margin-top: 0;
     margin-bottom: 15px;
     color: var(--text-color);
+    font-size: 1.8em; /* Slightly larger default */
 }
 
 #controls h2 {
@@ -96,6 +96,7 @@ body {
      margin-top: 0;
      margin-bottom: 10px;
      color: var(--text-color);
+     font-size: 1.2em; /* Slightly larger default */
 }
 
 #controls label {
@@ -115,6 +116,7 @@ body {
     background-color: var(--button-bg);
     color: var(--button-text-color);
     transition: background-color 0.2s ease, border-color 0.2s ease;
+    font-size: 1em; /* Base font size */
 }
 
 #controls button:hover {
@@ -126,9 +128,6 @@ body {
 #controls button:disabled {
     cursor: not-allowed;
     opacity: var(--disabled-opacity);
-    /* Keep background/color consistent when disabled */
-    /* background-color: var(--button-bg); */
-    /* color: var(--button-text-color); */
 }
 
 
@@ -137,13 +136,11 @@ body {
     border-top: 1px solid var(--border-light-color);
     padding-top: 15px;
     transition: border-color 0.3s ease;
-    /* Removed flex-grow */
-    /* margin-bottom: auto; */ /* Let it flow naturally */
 }
 
 #instruction-list {
      font-size: 0.9em;
-     max-height: 300px; /* Adjust as needed */
+     max-height: 300px; /* Default max height */
      overflow-y: auto;
      border: 1px solid var(--instruction-border);
      padding: 10px;
@@ -170,7 +167,6 @@ body {
 #instruction-list .step.current {
     background-color: var(--step-current-bg);
     font-weight: bold;
-    /* color: var(--text-color); */ /* Inherit or specify contrast */
 }
 #instruction-list .step.completed {
     background-color: var(--step-completed-bg);
@@ -180,14 +176,16 @@ body {
 
 
 #canvas-container {
-    flex-grow: 1;
+    flex-grow: 1; /* Takes remaining space */
     position: relative; /* Needed for absolute positioning of status */
     display: flex;
     justify-content: center;
     align-items: center;
     overflow: hidden; /* Keep clipping canvas */
     background-color: var(--bg-color); /* Match body background */
-     transition: background-color 0.3s ease;
+    transition: background-color 0.3s ease;
+    min-width: 0; /* Prevent flexbox blowout */
+    min-height: 0; /* Prevent flexbox blowout */
 }
 
 #canvas-container.grabbing {
@@ -198,9 +196,10 @@ body {
     display: block;
     max-width: 100%;
     max-height: 100%;
+    object-fit: contain; /* Ensure canvas scales within its container */
 }
 
-/* --- NEW STATUS STYLING --- */
+/* --- STATUS STYLING --- */
 #canvas-container > #status { /* Target status inside canvas container */
     position: absolute;       /* Position relative to canvas-container */
     bottom: 15px;             /* Distance from bottom */
@@ -213,11 +212,104 @@ body {
     border-radius: 5px;       /* Rounded corners */
     font-size: 0.9em;
     text-align: center;
-    /* Removed margin-top, border-top */
     transition: background-color 0.3s ease, color 0.3s ease; /* Smooth theme transition */
     pointer-events: none; /* Prevent status from blocking mouse events on canvas */
+    max-width: 90%; /* Prevent status from being too wide on small screens */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 #canvas-container > #status p {
     margin: 0; /* Remove default paragraph margin */
 }
-/* --- END NEW STATUS STYLING --- */
+/* --- END STATUS STYLING --- */
+
+
+/* --- Mobile / Small Screen Adjustments --- */
+@media (max-width: 700px) {
+    #container {
+        flex-direction: column; /* Stack controls and canvas vertically */
+        height: 100vh;         /* Ensure container fills viewport height */
+        /* width: 100vw; is already set */
+    }
+
+    #controls {
+        width: 100%;          /* Controls take full width */
+        height: auto;         /* Let content determine height initially */
+        max-height: 40vh;     /* Limit height (e.g., 40% of viewport height) */
+        overflow-y: auto;     /* Allow scrolling if controls content is tall */
+        border-right: none;   /* Remove the side border */
+        border-top: 1px solid var(--border-color); /* Add border between canvas and controls */
+        padding: 15px;        /* Adjust padding */
+        order: 2;             /* Place controls visually below the canvas */
+        flex-shrink: 0;       /* Prevent controls from shrinking if space is tight */
+        box-sizing: border-box; /* Include padding/border in width */
+        z-index: 10; /* Keep above canvas container bg */
+    }
+
+     #controls h1 {
+         margin-bottom: 10px;
+         font-size: 1.6em; /* Slightly smaller heading */
+     }
+     #controls h2 {
+         margin-bottom: 8px;
+         font-size: 1.1em;
+     }
+
+    #controls label {
+         margin-top: 8px;
+     }
+     #controls select,
+     #controls button {
+         padding: 12px; /* Slightly larger touch targets */
+         margin-top: 8px;
+         margin-bottom: 8px;
+         font-size: 1em; /* Ensure readable font size */
+         /* Optional: Make buttons full width for easier tapping */
+         /* width: 100%;
+         box-sizing: border-box; */
+     }
+
+    #instructions {
+        margin-top: 15px;
+        padding-top: 10px;
+    }
+
+     #instruction-list {
+         max-height: 120px; /* Adjust max height for smaller control area */
+         font-size: 0.85em;
+     }
+
+    #canvas-container {
+        flex-grow: 1;         /* Take remaining vertical space */
+        height: auto;         /* Let flexbox determine height (relative to container) */
+        width: 100%;          /* Ensure canvas container takes full width */
+        min-height: 0;        /* Crucial for flex column layout growth */
+        order: 1;             /* Place canvas visually above the controls */
+    }
+
+     /* Adjust status position slightly if needed */
+     #canvas-container > #status {
+        bottom: 10px; /* Maybe slightly less space from bottom edge */
+        font-size: 0.8em; /* Slightly smaller status font */
+     }
+
+    /* Hide body overflow again just in case mobile browsers behave differently */
+     body {
+         overflow: hidden;
+     }
+}
+
+/* Optional: Further tweaks for very narrow screens if needed */
+@media (max-width: 400px) {
+    #controls {
+        padding: 10px;
+         max-height: 45vh; /* Allow slightly more height if very narrow */
+    }
+    #controls h1 {
+        font-size: 1.4em;
+    }
+     #controls select,
+     #controls button {
+         padding: 10px; /* Adjust padding if needed */
+     }
+    /* etc. */
+}
