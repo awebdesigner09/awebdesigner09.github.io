@@ -1,10 +1,20 @@
-// Basic Setup
+//cube.js
+// 
+// // Basic Setup
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf0f0f0); // Match body background
 
 const canvasContainer = document.getElementById('canvas-container');
 const canvas = document.getElementById('rubiks-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
+
+// --- State Tracking ---
+let currentInternalCubeState = null; // Will be initialized as new min2phase.CubieCube()
+let isSolverInitialized = false; 
+
+const faceNames = ['U', 'R', 'F', 'D', 'L', 'B']; // Map index to face name
+// const colorMapThreeToChar = {}; // Will populate this
+
 
 // Adjust renderer size to fit container
 function resizeRenderer() {
@@ -118,26 +128,31 @@ function createCubie(x, y, z) {
 }
 
 function createCube() {
-    // Clear previous cube if exists
     scene.remove(cube);
     cube = new THREE.Group();
     cubies = [];
-
     for (let x = 0; x < CUBE_SIZE; x++) {
         for (let y = 0; y < CUBE_SIZE; y++) {
             for (let z = 0; z < CUBE_SIZE; z++) {
-                // Don't create the inner core cubie (optional, saves geometry)
-                if (x > 0 && x < CUBE_SIZE - 1 && y > 0 && y < CUBE_SIZE - 1 && z > 0 && z < CUBE_SIZE - 1) {
-                    continue;
-                }
+                if (x > 0 && x < CUBE_SIZE - 1 && y > 0 && y < CUBE_SIZE - 1 && z > 0 && z < CUBE_SIZE - 1) continue;
                 const cubie = createCubie(x, y, z);
                 cubies.push(cubie);
                 cube.add(cubie);
             }
         }
     }
+    // Initialize internal state - check if CubieCube is a function/constructor
+    if (isSolverInitialized && typeof min2phase !== 'undefined' && typeof min2phase.CubieCube === 'function') {
+        currentInternalCubeState = new min2phase.CubieCube(); // Creates a solved cube
+        console.log("Internal cube state initialized/reset.");
+    } else {
+        console.warn("Solver not ready or CubieCube not found when trying to initialize internal state in createCube.");
+        // We might be called by reset *before* init finishes, so don't error, just leave state null.
+        currentInternalCubeState = null;
+    }
     scene.add(cube);
 }
+
 
 function updateStatus(text) {
     statusText.textContent = text;
@@ -250,6 +265,23 @@ function rotateLayer(axis, layerIndex, angle, duration = 300, onComplete = null)
              layer.forEach(cubie => {
                 // Get world matrix, apply it to cubie, remove from pivot, add back to scene's cube group
                 scene.attach(cubie); // This preserves world transforms
+                // Snap rotation to nearest 90 degrees (PI/2 radians)
+                cubie.rotation.x = Math.round(cubie.rotation.x / (Math.PI / 2)) * (Math.PI / 2);
+                cubie.rotation.y = Math.round(cubie.rotation.y / (Math.PI / 2)) * (Math.PI / 2);
+                cubie.rotation.z = Math.round(cubie.rotation.z / (Math.PI / 2)) * (Math.PI / 2);
+                
+                // Optional: Snap position (often less critical if spacing > 0, but can help)
+                // We need to snap the WORLD position, then potentially convert back if parent isn't scene origin
+                // Or simpler: round local position if parent is scene origin. Let's try rounding local:
+                cubie.position.x = Math.round(cubie.position.x / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
+                cubie.position.y = Math.round(cubie.position.y / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
+                cubie.position.z = Math.round(cubie.position.z / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
+                // Refined Position Snapping (considering the offset):
+                // cubie.position.x = Math.round((cubie.position.x + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                // cubie.position.y = Math.round((cubie.position.y + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                // cubie.position.z = Math.round((cubie.position.z + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                // ^^ Let's try the simple rounding first. ^^
+            
             });
              scene.remove(pivot); // Clean up the temporary pivot
 
@@ -265,112 +297,272 @@ function rotateLayer(axis, layerIndex, angle, duration = 300, onComplete = null)
 
 // --- Move Notation Mapping ---
 // Map standard notation (U, R, F, D, L, B, U', R2 etc.) to rotation parameters
-function performMove(move) {
+const moveMap = {
+    'U': { axis: AXIS.Y, layer: CUBE_SIZE - 1, angle: -Math.PI / 2 },
+    'U\'': { axis: AXIS.Y, layer: CUBE_SIZE - 1, angle: Math.PI / 2 },
+    'U2': { axis: AXIS.Y, layer: CUBE_SIZE - 1, angle: -Math.PI },
+    'D': { axis: AXIS.Y, layer: 0, angle: Math.PI / 2 },
+    'D\'': { axis: AXIS.Y, layer: 0, angle: -Math.PI / 2 },
+    'D2': { axis: AXIS.Y, layer: 0, angle: Math.PI },
+    'R': { axis: AXIS.X, layer: CUBE_SIZE - 1, angle: -Math.PI / 2 },
+    'R\'': { axis: AXIS.X, layer: CUBE_SIZE - 1, angle: Math.PI / 2 },
+    'R2': { axis: AXIS.X, layer: CUBE_SIZE - 1, angle: -Math.PI },
+    'L': { axis: AXIS.X, layer: 0, angle: Math.PI / 2 },
+    'L\'': { axis: AXIS.X, layer: 0, angle: -Math.PI / 2 },
+    'L2': { axis: AXIS.X, layer: 0, angle: Math.PI },
+    'F': { axis: AXIS.Z, layer: CUBE_SIZE - 1, angle: -Math.PI / 2 },
+    'F\'': { axis: AXIS.Z, layer: CUBE_SIZE - 1, angle: Math.PI / 2 },
+    'F2': { axis: AXIS.Z, layer: CUBE_SIZE - 1, angle: -Math.PI },
+    'B': { axis: AXIS.Z, layer: 0, angle: Math.PI / 2 },
+    'B\'': { axis: AXIS.Z, layer: 0, angle: -Math.PI / 2 },
+    'B2': { axis: AXIS.Z, layer: 0, angle: Math.PI },
+    // Add middle layer slices if needed (M, E, S) - more complex layer selection
+};
+
+function performMove(axis, layer, angle, moveNotation, calledFrom = 'unknown') {
+    // --- >>> ADD THIS GUARD CLAUSE <<< ---
+    if (typeof axis === 'undefined') {
+        console.error(`performMove called with undefined axis! Layer: ${layer}, Angle: ${angle}, Notation: ${moveNotation}, From: ${calledFrom}`);
+        // Prevent further execution to avoid the ReferenceError
+        return Promise.reject("performMove called with undefined axis");
+    }
+    // --- >>> END GUARD CLAUSE <<< ---
+
+
     if (isAnimating) return Promise.reject("Animation in progress");
+    console.log(`performMove called for: Axis ${axis}, Layer ${layer}, Angle ${angle.toFixed(2)}, Notation '${moveNotation}', From ${calledFrom}`);
 
-    const moveMap = {
-        'U': { axis: AXIS.Y, layer: CUBE_SIZE - 1, angle: -Math.PI / 2 },
-        'U\'': { axis: AXIS.Y, layer: CUBE_SIZE - 1, angle: Math.PI / 2 },
-        'U2': { axis: AXIS.Y, layer: CUBE_SIZE - 1, angle: -Math.PI },
-        'D': { axis: AXIS.Y, layer: 0, angle: Math.PI / 2 },
-        'D\'': { axis: AXIS.Y, layer: 0, angle: -Math.PI / 2 },
-        'D2': { axis: AXIS.Y, layer: 0, angle: Math.PI },
-        'R': { axis: AXIS.X, layer: CUBE_SIZE - 1, angle: -Math.PI / 2 },
-        'R\'': { axis: AXIS.X, layer: CUBE_SIZE - 1, angle: Math.PI / 2 },
-        'R2': { axis: AXIS.X, layer: CUBE_SIZE - 1, angle: -Math.PI },
-        'L': { axis: AXIS.X, layer: 0, angle: Math.PI / 2 },
-        'L\'': { axis: AXIS.X, layer: 0, angle: -Math.PI / 2 },
-        'L2': { axis: AXIS.X, layer: 0, angle: Math.PI },
-        'F': { axis: AXIS.Z, layer: CUBE_SIZE - 1, angle: -Math.PI / 2 },
-        'F\'': { axis: AXIS.Z, layer: CUBE_SIZE - 1, angle: Math.PI / 2 },
-        'F2': { axis: AXIS.Z, layer: CUBE_SIZE - 1, angle: -Math.PI },
-        'B': { axis: AXIS.Z, layer: 0, angle: Math.PI / 2 },
-        'B\'': { axis: AXIS.Z, layer: 0, angle: -Math.PI / 2 },
-        'B2': { axis: AXIS.Z, layer: 0, angle: Math.PI },
-        // Add middle layer slices if needed (M, E, S) - more complex layer selection
-    };
 
-    const params = moveMap[move];
-    if (!params) {
-        console.warn(`Unknown move: ${move}`);
-        return Promise.reject(`Unknown move: ${move}`);
-    }
+    // --- >>> Update the INTERNAL state using AXIS/LAYER/ANGLE <<< ---
+    let internalStateUpdated = false;
+    if (currentInternalCubeState && isSolverInitialized && typeof min2phase !== 'undefined' && min2phase.moveCube && typeof min2phase.CubieCube === 'function') {
+        const direction = angle / (Math.PI / 2); // Determine direction (-1, 1, or 2 for 180)
+        let moveCode = -1;
 
-    // For double moves (R2), perform two single turns visually
-    if (move.endsWith('2')) {
-         const singleMove = move.substring(0, 1); // e.g., R from R2
-         const singleParams = moveMap[singleMove];
-         return new Promise((resolve) => {
-             rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 200, () => {
-                 rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 200, resolve);
-             });
-         });
+        // Use === strict equality for axis comparison
+        if (Math.abs(Math.round(direction)) === 2) { // Handle double moves (180 degrees)
+             const baseCode = getInternalMoveCode(axis, layer, Math.sign(direction));
+             if (baseCode !== -1) {
+                 const tempCube = new min2phase.CubieCube();
+                 const moveCubeEntry = min2phase.moveCube[baseCode];
+                 if (moveCubeEntry){
+                    min2phase.CubieCube_CornMult(currentInternalCubeState, moveCubeEntry, tempCube);
+                    min2phase.CubieCube_EdgeMult(currentInternalCubeState, moveCubeEntry, tempCube);
+                    min2phase.CubieCube_CornMult(tempCube, moveCubeEntry, currentInternalCubeState);
+                    min2phase.CubieCube_EdgeMult(tempCube, moveCubeEntry, currentInternalCubeState);
+                    internalStateUpdated = true;
+                    console.log(`Internal state updated by double move: ${moveNotation}`);
+                 } else {
+                     console.warn(`Internal moveCube entry missing for base code ${baseCode}`);
+                 }
+             } else {
+                 console.warn(`Could not determine base move code for double move: ${moveNotation}`);
+             }
+        } else { // Single move (90 degrees)
+            moveCode = getInternalMoveCode(axis, layer, Math.sign(direction));
+            if (moveCode !== -1 && min2phase.moveCube[moveCode]) {
+                const tempCube = new min2phase.CubieCube();
+                min2phase.CubieCube_CornMult(currentInternalCubeState, min2phase.moveCube[moveCode], tempCube);
+                min2phase.CubieCube_EdgeMult(currentInternalCubeState, min2phase.moveCube[moveCode], tempCube);
+                currentInternalCubeState.init(tempCube.ca, tempCube.ea);
+                internalStateUpdated = true;
+                // console.log(`Internal state updated by move: ${moveNotation} (Code: ${moveCode})`);
+            } else {
+                 console.warn(`Internal state NOT updated. Move code ${moveCode} not found or invalid for: ${moveNotation}`);
+            }
+        }
     } else {
-        return new Promise((resolve) => {
-            rotateLayer(params.axis, params.layer, params.angle, 300, resolve);
-        });
+        console.error("Cannot update internal state: Internal state object or required solver library parts missing/invalid.");
     }
+     console.log(`Internal state update status for '${moveNotation}': ${internalStateUpdated}`);
+    // --- End internal state update ---
+
+
+    // --- Visual Animation (Use axis, layer, angle directly) ---
+    return new Promise((resolve) => {
+         const duration = Math.abs(Math.round(angle / (Math.PI/2))) === 2 ? 400 : 300; // Longer for 180?
+         rotateLayer(axis, layer, angle, duration, resolve); // << Error might originate from here if axis is invalid for rotateLayer
+     });
 }
 
-
 // --- Scramble, Solve, Learn ---
-
 function scrambleCube() {
     if (isAnimating) return;
-    resetState(); // Clear solve/learn state
 
-    const moves = ["U", "D", "L", "R", "F", "B"];
-    const modifiers = ["", "'", "2"];
-    const scrambleSequence = [];
-    const scrambleLength = 20; // Standard scramble length
+    // --- Add check here ---
+    if (!isSolverInitialized || !currentInternalCubeState) {
+        console.error("Cannot scramble: Solver or internal state not ready.");
+        updateStatus("Error: Cannot scramble now.");
+        return;
+    }
+    // --- End check ---
+
+    // Reset learn state etc.
+    resetState(); // Clears instructions, flags - doesn't reset internal state here
+
+    const baseMoves = ["U", "R", "F", "D", "L", "B"]; // Base letters only
+    const scrambleSequence = []; // For visual animation
+    const scrambleLength = 20;
 
     updateStatus("Scrambling...");
     disableControls();
 
+    // --- >>> Apply scramble moves to the INTERNAL state FIRST <<< ---
+    const tempCube = new min2phase.CubieCube();
+    // Create a fresh internal solved state for scrambling logic ONLY
+    let scrambleInternalState = new min2phase.CubieCube();
+    console.log("Applying scramble to internal state...");
+
     for (let i = 0; i < scrambleLength; i++) {
-        const move = moves[Math.floor(Math.random() * moves.length)];
-        const modifier = modifiers[Math.floor(Math.random() * modifiers.length)];
-        scrambleSequence.push(move + modifier);
+        const base = baseMoves[Math.floor(Math.random() * baseMoves.length)];
+        const modIndex = Math.floor(Math.random() * 3); // 0: normal, 1: 2, 2: prime
+        let move = ""; // This is the move string for internal lookup and visual sequence
+
+        if (modIndex === 0) move = base + " ";
+        else if (modIndex === 1) move = base + "2";
+        else move = base + "'";
+
+        scrambleSequence.push(move); // Store for visual animation
+
+        const moveCode = min2phase.move2str.indexOf(move);
+         if (moveCode !== -1 && min2phase.moveCube[moveCode]) {
+            // Apply move to the temporary scramble state tracker
+            min2phase.CubieCube.CornMult(scrambleInternalState, min2phase.moveCube[moveCode], tempCube);
+            min2phase.CubieCube.EdgeMult(scrambleInternalState, min2phase.moveCube[moveCode], tempCube);
+            scrambleInternalState.init(tempCube.ca, tempCube.ea); // Update temp state
+        } else {
+             console.warn(`Scramble move '${move}' not found in min2phase.move2str - Skipping internal update for this move.`);
+        }
     }
+    // --- Assign the final scrambled state to the main state variable ---
+    currentInternalCubeState = scrambleInternalState;
+    console.log("Internal state updated after scramble.");
+    console.log("Final Scrambled Facelet State (from internal):", currentInternalCubeState.toFaceCube());
+    console.log("Visual Scramble Sequence:", scrambleSequence.join(' '));
+    // --- End internal state update ---
 
-    console.log("Scramble Sequence:", scrambleSequence.join(' '));
 
-    // Apply scramble moves instantly (or with very short delay)
+    // Apply scramble moves visually (starting from solved visual state)
+    
     let currentMove = 0;
-    function applyNextMove() {
+    function applyNextVisualMove() {
         if (currentMove < scrambleSequence.length) {
-            const move = scrambleSequence[currentMove++];
-            const params = performMove(move); // Get rotation parameters
-             if (params instanceof Promise) { // performMove now returns promise
-                 params.then(applyNextMove).catch(err => console.error(err));
-             } else { // Should not happen now but keep for safety
-                 applyNextMove();
+            const move = scrambleSequence[currentMove++]; // Get the correctly formatted move
+            const trimmedMove = move.trim(); // Trim for visual lookup if needed
+            const visualParams = moveMap[trimmedMove];
+
+            if (!visualParams) {
+                console.warn(`Visual params not found for move: ${trimmedMove}`);
+                applyNextVisualMove(); // Skip if visual unknown
+                return;
+            }
+
+             if (trimmedMove.endsWith('2')) {
+                 const singleMove = trimmedMove.substring(0, 1);
+                 const singleParams = moveMap[singleMove];
+                 rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 50, () => {
+                    rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 50, applyNextVisualMove);
+                });
+             } else {
+                 rotateLayer(visualParams.axis, visualParams.layer, visualParams.angle, 75, applyNextVisualMove);
              }
         } else {
              updateStatus("Scrambled. Ready.");
              enableControls();
+             console.log("Visual scramble complete.");
         }
     }
-    // Start applying the scramble
-     applyNextMove();
-
-    // Note: In a real solver, you'd update the cube's logical state here.
-    // For this visualizer, the visual state *is* the state after rotation.
+    applyNextVisualMove(); // Start applying the visual scramble
 }
 
 
-// Simulate getting a solution string (replace with actual solver if integrated)
+// Get the solution for the current cube state
 function getSolutionForCurrentState() {
-    // !!! Placeholder !!!
-    // In a real application, you would:
-    // 1. Get the current state of the cube (e.g., facelet string).
-    // 2. Pass this state to a solving algorithm (like Kociemba or a beginner's method solver).
-    // 3. The solver returns a sequence of moves.
 
-    // For demonstration, let's return a simple sequence.
-    // This won't actually solve a scrambled cube, just demonstrates the animation.
-    console.warn("Using placeholder solution sequence!");
-    return ["R", "U", "R'", "U'", "F'", "U", "F", "L", "U", "L'"]; // Example sequence
+    // 1. Check if solver is ready
+    if (!isSolverInitialized) {
+        console.error("Solver not initialized yet.");
+        updateStatus("Error: Solver is still initializing.");
+        return null;
+    }
+
+    // 2. Check if internal state object exists
+    if (!currentInternalCubeState) {
+         console.error("Internal cube state is not initialized.");
+         updateStatus("Error: Cube state missing.");
+         return null;
+    }
+
+    // 3. --- >>> Generate facelet string FROM internal state <<< ---
+    let faceletString;
+    try {
+        faceletString = currentInternalCubeState.toFaceCube();
+        console.log("Requesting solution. Generated facelet string:", faceletString);
+    } catch (e) {
+        console.error("Error generating facelet string from internal state:", e);
+        updateStatus("Error: Failed to read cube state.");
+        return null;
+    }
+
+    // 4. Check if already solved (using the generated string)
+    const SOLVED_STRING_FOR_CHECK = "UUUUUUUUURRRRRRRRRFFFFFFFFFDDDDDDDDDLLLLLLLLLBBBBBBBBB"; // Define locally if needed
+    if (faceletString === SOLVED_STRING_FOR_CHECK) {
+        console.log("Cube is already solved logically.");
+        updateStatus("Cube is already solved.");
+        return []; // No moves needed
+    }
+
+    // 5. Proceed with calling the solver
+    try {
+        if (typeof min2phase === 'undefined' || typeof min2phase.solve !== 'function') {
+            console.error("min2phase solver library not found or not loaded correctly!");
+            updateStatus("Error: Solver library missing.");
+            return null;
+        }
+
+        updateStatus("Calculating solution (can take a few seconds)...");
+        console.log("Sending generated state to min2phase solver:", faceletString);
+        disableControls();
+
+        let solutionString = "";
+        try {
+            solutionString = min2phase.solve(faceletString); // Pass the generated string
+        } catch (e) {
+             console.error("Solver threw an error during execution:", e);
+             solutionString = "Error: Solver crashed";
+        }
+
+        console.log("min2phase solver returned:", solutionString);
+        enableControls();
+
+        // Process the result
+        if (!solutionString || typeof solutionString !== 'string' || solutionString.toLowerCase().includes("error")) {
+             console.error("Solver returned an error or invalid result:", solutionString);
+             let errorMsg = solutionString ? solutionString.replace(/Error\s*\d*:/i, '').trim() : "Solver failed";
+             errorMsg = errorMsg.replace(/^Error\s*\d+$/, 'Invalid cube state or solver issue');
+             updateStatus("Error: " + errorMsg);
+             // No need to log faceletString here as errors should be less frequent now
+             return null;
+        }
+
+        if (solutionString.trim() === "") {
+             console.warn("Solver returned empty string for non-solved state:", faceletString);
+             updateStatus("Solver returned unexpected empty result.");
+             return null;
+        }
+
+        // Parse and return the solution
+        const solutionMoves = solutionString.trim().split(/\s+/);
+        updateStatus("Solution found! Preparing animation...");
+        return solutionMoves;
+
+    } catch (error) {
+        // Catch any other unexpected JS errors
+        console.error("Error during solving process execution:", error);
+        updateStatus("Error calculating solution.");
+        enableControls();
+        return null;
+    }
 }
 
 // Simple mapping from move notation to human-readable steps (basic)
@@ -386,49 +578,88 @@ function getMoveDescription(move) {
      return map[move] || `Perform move: ${move}`;
 }
 
+// This mirrors logic from convertRotationToMoveNotation but outputs the internal index
+function getInternalMoveCode(axis, layer, direction) {
+    const angle = direction * Math.PI / 2;
+    const prime = angle > 0; // CCW = prime for U/L/B etc.
+
+    let moveStr = null;
+    if (axis === AXIS.Y) { // U or D layer
+        if (layer === CUBE_SIZE - 1) moveStr = prime ? "U'" : "U ";
+        else if (layer === 0) moveStr = prime ? "D " : "D'";
+    } else if (axis === AXIS.X) { // R or L layer
+        if (layer === CUBE_SIZE - 1) moveStr = prime ? "R'" : "R ";
+        else if (layer === 0) moveStr = prime ? "L " : "L'";
+    } else if (axis === AXIS.Z) { // F or B layer
+        if (layer === CUBE_SIZE - 1) moveStr = prime ? "F'" : "F ";
+        else if (layer === 0) moveStr = prime ? "B " : "B'";
+    }
+
+    if (moveStr && typeof min2phase !== 'undefined' && Array.isArray(min2phase.move2str)) {
+        return min2phase.move2str.indexOf(moveStr);
+    }
+    return -1; // Not found or invalid
+}
 
 function solveCubeStepByStep() {
     if (isAnimating) return;
     resetState();
 
-    const solutionMoves = getSolutionForCurrentState(); // Get the sequence
+    const solutionMoves = getSolutionForCurrentState(); // Get sequence like ["R ", "U'", "F2"]
     if (!solutionMoves || solutionMoves.length === 0) {
         updateStatus("Cube is already solved or no solution found.");
         updateInstructions([]);
         return;
     }
 
-    solveSteps = solutionMoves.map(move => ({ move: move, description: getMoveDescription(move) }));
+    // Prepare steps for display and execution
+    solveSteps = solutionMoves.map(moveNotation => {
+        // Find the visual parameters corresponding to this move notation
+        const trimmedNotation = moveNotation.trim();
+        const visualParams = moveMap[trimmedNotation];
+        if (!visualParams) {
+             console.warn(`Cannot find visual params for solution move: ${moveNotation}`);
+             return null; // Skip this step if visual params unknown
+        }
+        return {
+            move: moveNotation, // The notation from solver (e.g., "R ", "U'")
+            description: getMoveDescription(trimmedNotation), // Description based on trimmed
+            axis: visualParams.axis,
+            layer: visualParams.layer,
+            angle: visualParams.angle
+        };
+    }).filter(step => step !== null); // Filter out any steps we couldn't parse
+
     currentSolveStepIndex = 0;
     updateInstructions(solveSteps, currentSolveStepIndex);
     updateStatus("Solving...");
-    disableControls(); // Disable manual interaction during auto-solve
+    disableControls();
 
     function nextStep() {
         if (currentSolveStepIndex < solveSteps.length) {
             const step = solveSteps[currentSolveStepIndex];
-            updateInstructions(solveSteps, currentSolveStepIndex); // Highlight current step
-            performMove(step.move)
+            updateInstructions(solveSteps, currentSolveStepIndex);
+
+            // Call performMove with axis/layer/angle
+            performMove(step.axis, step.layer, step.angle, step.move, 'solver')
                 .then(() => {
                     currentSolveStepIndex++;
-                    // Small delay before starting next animation for better visualization
-                    setTimeout(nextStep, 100); // 100ms delay between steps
+                    setTimeout(nextStep, 100);
                 })
                 .catch(error => {
                     console.error("Error during solving step:", error);
                     updateStatus("Error during solve.");
-                    enableControls(); // Re-enable on error
+                    enableControls();
                 });
         } else {
             updateStatus("Solved!");
             enableControls();
-            updateInstructions(solveSteps, -1); // Clear highlight when done
-            solveSteps = []; // Clear steps
+            updateInstructions(solveSteps, -1);
+            solveSteps = [];
             currentSolveStepIndex = -1;
         }
     }
-
-    nextStep(); // Start the process
+    nextStep();
 }
 
 function startLearnMode() {
@@ -465,38 +696,38 @@ function exitLearnMode() {
     enableControls();
 }
 
-function checkLearnMove(userMove) {
+function checkLearnMove(userMove) { // userMove comes from convertRotationToMoveNotation (e.g., "D ")
     if (!isLearnMode || isAnimating || !learnStepExpectedMove) return;
 
-    console.log(`Learn Check: Expected: ${learnStepExpectedMove}, User Performed: ${userMove}`);
+    // --- >>> Normalize both moves by trimming whitespace <<< ---
+    const expectedMoveTrimmed = learnStepExpectedMove.trim();
+    const userMoveTrimmed = userMove.trim();
+    // --- >>> END NORMALIZATION <<< ---
 
-    if (userMove === learnStepExpectedMove) {
-        // Mark step as completed
+    console.log(`Learn Check: Expected='${expectedMoveTrimmed}', UserPerformed='${userMoveTrimmed}' (Original User Input='${userMove}')`);
+
+    // --- >>> Compare the trimmed versions <<< ---
+    if (userMoveTrimmed === expectedMoveTrimmed) {
         if (currentSolveStepIndex < solveSteps.length) {
              solveSteps[currentSolveStepIndex].completed = true;
         }
-
         currentSolveStepIndex++;
 
         if (currentSolveStepIndex >= solveSteps.length) {
-             // Learning finished
              updateStatus("Congratulations! Cube solved (in Learn Mode).");
-             updateInstructions(solveSteps, -1, solveSteps.map(s => s.completed)); // Show all completed
-             // exitLearnMode(); // Optionally exit automatically
-             learnStepExpectedMove = null; // No more expected moves
-             enableControls(); // Ensure controls are enabled
+             updateInstructions(solveSteps, -1, solveSteps.map(s => s.completed));
+             learnStepExpectedMove = null;
+             enableControls();
         } else {
-             // Proceed to next step
-             learnStepExpectedMove = solveSteps[currentSolveStepIndex].move;
-             updateStatus(`Correct! Next Step ${currentSolveStepIndex + 1}: ${learnStepExpectedMove}`);
-             updateInstructions(solveSteps, currentSolveStepIndex, solveSteps.map(s => s.completed)); // Highlight next
+             learnStepExpectedMove = solveSteps[currentSolveStepIndex].move; // Get next expected move (original format from solver)
+             updateStatus(`Correct! Next Step ${currentSolveStepIndex + 1}: ${learnStepExpectedMove.trim()}`); // Display trimmed version
+             updateInstructions(solveSteps, currentSolveStepIndex, solveSteps.map(s => s.completed));
         }
     } else {
-         updateStatus(`Incorrect move. Expected: ${learnStepExpectedMove}. Try again.`);
-         // Maybe add a visual cue for incorrect move later
+         // Display the expected move trimmed for clarity to the user
+         updateStatus(`Incorrect move. Expected: ${expectedMoveTrimmed}. Try again.`);
     }
 }
-
 function resetState() {
     isLearnMode = false;
     solveSteps = [];
@@ -504,7 +735,11 @@ function resetState() {
     learnStepExpectedMove = null;
     learnButton.textContent = "Learn to Solve";
     updateInstructions();
-    enableControls(); // Make sure controls are enabled
+
+    // No need to reset state string here, createCube/reset button handles internal state reset
+    enableControls();
+    // Consider calling createCube() here if a full visual reset is always desired
+    // createCube();
 }
 
 function disableControls(disableManualRotation = true) {
@@ -682,44 +917,47 @@ function determineAndPerformDragMove(intersectData, dragVector) {
          }
      }
 
-     // --- Convert rotation parameters to standard move notation ---
-     // This is needed for Learn Mode checking
-     let moveNotation = convertRotationToMoveNotation(rotationAxis, layerIndex, direction);
-     console.log(`Detected Move: Axis=${rotationAxis}, Layer=${layerIndex}, Dir=${direction}, Notation=${moveNotation}`);
+     // --- Convert rotation parameters to standard move notation for display/learn mode ---
+    const visualMoveNotation = convertRotationToMoveNotation(rotationAxis, layerIndex, direction); // Still needed for learn mode check maybe?
+    const rotationAngle = direction * Math.PI / 2; // Calculate angle for visual rotation
 
-     if (moveNotation) {
-          // Perform the rotation visually
-         performMove(moveNotation)
+    console.log(`Detected Drag Move: Axis=${rotationAxis}, Layer=${layerIndex}, Angle=${rotationAngle.toFixed(2)}, Notation=${visualMoveNotation}`);
+
+    if (rotationAxis && layerIndex !== undefined) {
+         // Perform the rotation visually AND update internal state using axis/layer/angle
+         performMove(rotationAxis, layerIndex, rotationAngle, visualMoveNotation || 'N/A', 'drag')
              .then(() => {
-                 // Check if the move was correct in Learn Mode
-                 if (isLearnMode) {
-                     checkLearnMove(moveNotation);
+                 // Check if the move was correct in Learn Mode - USE visualMoveNotation
+                 if (isLearnMode && visualMoveNotation) {
+                     checkLearnMove(visualMoveNotation);
                  }
              })
              .catch(err => console.error("Error performing dragged move:", err));
-
-     } else {
-         console.warn("Could not determine valid move from drag.");
-     }
+    } else {
+         console.warn("Could not determine valid move parameters from drag.");
+    }
 }
 
 // Convert calculated rotation parameters back into standard notation (e.g., "R", "U'")
 function convertRotationToMoveNotation(axis, layer, direction) {
-    const angle = direction * Math.PI / 2; // Assume single 90-degree turns from drag
-    const prime = angle > 0; // Positive angle usually means counter-clockwise for U/L/B, prime notation
+    const angle = direction * Math.PI / 2;
+    const prime = angle > 0; // Positive angle in our setup means counter-clockwise for U/L/B, prime notation
 
+    // Match the format in min2phase.move2str
     if (axis === AXIS.Y) { // U or D layer
-        if (layer === CUBE_SIZE - 1) return prime ? "U'" : "U";
-        if (layer === 0) return prime ? "D" : "D'"; // D rotation is opposite U
+        if (layer === CUBE_SIZE - 1) return prime ? "U'" : "U "; // Top face (U/U')
+        if (layer === 0) return prime ? "D " : "D'"; // Bottom face (D/D') - Note D is clockwise view from bottom
     } else if (axis === AXIS.X) { // R or L layer
-        if (layer === CUBE_SIZE - 1) return prime ? "R'" : "R";
-        if (layer === 0) return prime ? "L" : "L'"; // L rotation is opposite R
+        if (layer === CUBE_SIZE - 1) return prime ? "R'" : "R "; // Right face (R/R')
+        if (layer === 0) return prime ? "L " : "L'"; // Left face (L/L')
     } else if (axis === AXIS.Z) { // F or B layer
-        if (layer === CUBE_SIZE - 1) return prime ? "F'" : "F";
-        if (layer === 0) return prime ? "B" : "B'"; // B rotation is opposite F
+        if (layer === CUBE_SIZE - 1) return prime ? "F'" : "F "; // Front face (F/F')
+        if (layer === 0) return prime ? "B " : "B'"; // Back face (B/B')
     }
-    return null; // Invalid combination (e.g., middle slice if not implemented)
+    return null; // Invalid combination
 }
+
+
 
 
 // --- Keyboard Interaction (Spacebar for view rotation) ---
@@ -744,10 +982,33 @@ window.addEventListener('keyup', (event) => {
 
 // --- Initialization ---
 function init() {
-    createCube();
-    resizeRenderer(); // Initial sizing
-    resetState();
-    updateStatus("Ready");
+    //populateColorMap();
+
+    updateStatus("Initializing solver data...");
+    console.log("Initializing min2phase solver...");
+    try {
+        requestAnimationFrame(() => { // Defer solver init and first cube creation
+            console.time("Solver Init");
+            min2phase.initFull();
+            console.timeEnd("Solver Init");
+            isSolverInitialized = true;
+            console.log("Solver initialized.");
+
+            // >>> Create the first cube AFTER solver is initialized <<<
+            createCube(); // Creates visual cube AND initializes internal state now
+            resizeRenderer(); // Resize after canvas/container is ready
+
+            updateStatus("Ready");
+            enableControls();
+       });
+    } catch (e) {
+         console.error("Failed to initialize solver:", e);
+         updateStatus("Error: Solver failed to initialize!");
+         solveButton.disabled = true;
+         learnButton.disabled = true;
+         isSolverInitialized = false;
+    }
+    // --- End Solver Initialization ---
 
     // Event Listeners
     scrambleButton.addEventListener('click', scrambleCube);
@@ -759,28 +1020,24 @@ function init() {
              startLearnMode();
          }
     });
-     resetViewButton.addEventListener('click', () => {
-        // 1. Reset OrbitControls internal state (good practice)
+    resetViewButton.addEventListener('click', () => {
         controls.reset();
-
-        // 2. Explicitly set the desired camera position
         camera.position.set(4, 4, 6);
-
-        // 3. Explicitly set the controls' target (where the camera looks)
-        //    scene.position is usually (0,0,0) by default
         controls.target.set(scene.position.x, scene.position.y, scene.position.z);
-
-        // 4. Update the controls to reflect the changes immediately
         controls.update();
+        if (!isAnimating) {
+            updateStatus("Resetting cube state...");
+            createCube(); // Re-creates visual cube & resets internal state
+            resetState(); // Clear instructions, flags etc.
+            updateStatus("Ready");
+        }
     });
-
 
     // Use pointer events for better touch/mouse compatibility
     canvas.addEventListener('pointerdown', onPointerDown);
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
     canvas.addEventListener('pointerleave', onPointerUp); // Treat leaving canvas as pointer up
-
 
     animate(); // Start render loop
 }
