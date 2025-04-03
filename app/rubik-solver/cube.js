@@ -2,7 +2,6 @@
 // 
 // // Basic Setup
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xf0f0f0); // Match body background
 
 const canvasContainer = document.getElementById('canvas-container');
 const canvas = document.getElementById('rubiks-canvas');
@@ -93,8 +92,40 @@ const learnButton = document.getElementById('learn-button');
 const resetViewButton = document.getElementById('reset-view-button');
 const instructionList = document.getElementById('instruction-list');
 const statusText = document.getElementById('status-text');
+const themeToggleButton = document.getElementById('theme-toggle-button');
 
 // --- Helper Functions ---
+
+// Define theme colors for the scene background
+const lightSceneBgColor = new THREE.Color(0xf0f0f0); // Matches light --bg-color
+const darkSceneBgColor = new THREE.Color(0x2d2d2d);  // Matches dark --bg-color
+
+// Add these helper functions for theme management
+function applyTheme(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-mode');
+        // --- ADDED ---
+        if (scene) { // Ensure scene exists
+             scene.background = darkSceneBgColor;
+        }
+        // --- END ADDED ---
+    } else {
+        document.body.classList.remove('dark-mode');
+        // --- ADDED ---
+         if (scene) { // Ensure scene exists
+             scene.background = lightSceneBgColor;
+         }
+        // --- END ADDED ---
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.body.classList.contains('dark-mode') ? 'dark' : 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+    localStorage.setItem('rubiks-theme', newTheme); // Save preference
+}
+
 
 function getCubieMaterials(x, y, z) {
     const materials = [];
@@ -277,9 +308,9 @@ function rotateLayer(axis, layerIndex, angle, duration = 300, onComplete = null)
                 cubie.position.y = Math.round(cubie.position.y / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
                 cubie.position.z = Math.round(cubie.position.z / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE;
                 // Refined Position Snapping (considering the offset):
-                // cubie.position.x = Math.round((cubie.position.x + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
-                // cubie.position.y = Math.round((cubie.position.y + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
-                // cubie.position.z = Math.round((cubie.position.z + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                cubie.position.x = Math.round((cubie.position.x + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                cubie.position.y = Math.round((cubie.position.y + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
+                cubie.position.z = Math.round((cubie.position.z + CUBE_CENTER_OFFSET) / TOTAL_CUBIE_SIZE) * TOTAL_CUBIE_SIZE - CUBE_CENTER_OFFSET;
                 // ^^ Let's try the simple rounding first. ^^
             
             });
@@ -389,36 +420,41 @@ function performMove(axis, layer, angle, moveNotation, calledFrom = 'unknown') {
 function scrambleCube() {
     if (isAnimating) return;
 
-    // --- Add check here ---
+    // --- Check if internal state is ready ---
     if (!isSolverInitialized || !currentInternalCubeState) {
         console.error("Cannot scramble: Solver or internal state not ready.");
         updateStatus("Error: Cannot scramble now.");
-        return;
+        // Optionally, try to re-initialize if null:
+        // if (!currentInternalCubeState && isSolverInitialized) {
+        //     console.log("Attempting to reinitialize internal state before scramble.");
+        //     currentInternalCubeState = new min2phase.CubieCube();
+        // } else {
+        //     return; // Still cannot proceed
+        // }
+         return; // Prevent scrambling if state isn't ready
     }
     // --- End check ---
 
-    // Reset learn state etc.
-    resetState(); // Clears instructions, flags - doesn't reset internal state here
+    resetState(); // Clears UI/learn state etc.
 
-    const baseMoves = ["U", "R", "F", "D", "L", "B"]; // Base letters only
+    const baseMoves = ["U", "R", "F", "D", "L", "B"];
     const scrambleSequence = []; // For visual animation
     const scrambleLength = 20;
 
     updateStatus("Scrambling...");
     disableControls();
 
-    // --- >>> Apply scramble moves to the INTERNAL state FIRST <<< ---
-    const tempCube = new min2phase.CubieCube();
-    // Create a fresh internal solved state for scrambling logic ONLY
-    let scrambleInternalState = new min2phase.CubieCube();
-    console.log("Applying scramble to internal state...");
+    // --- >>> Apply scramble moves directly to the CURRENT internal state <<< ---
+    const tempCube = new min2phase.CubieCube(); // Helper for multiplication
+    console.log("Applying scramble to *current* internal state...");
 
     for (let i = 0; i < scrambleLength; i++) {
         const base = baseMoves[Math.floor(Math.random() * baseMoves.length)];
         const modIndex = Math.floor(Math.random() * 3); // 0: normal, 1: 2, 2: prime
         let move = ""; // This is the move string for internal lookup and visual sequence
 
-        if (modIndex === 0) move = base + " ";
+        // Ensure move format matches min2phase.move2str (e.g., "U " for single U)
+        if (modIndex === 0) move = base + " "; // Add space for single moves if required by move2str format
         else if (modIndex === 1) move = base + "2";
         else move = base + "'";
 
@@ -426,29 +462,27 @@ function scrambleCube() {
 
         const moveCode = min2phase.move2str.indexOf(move);
          if (moveCode !== -1 && min2phase.moveCube[moveCode]) {
-            // Apply move to the temporary scramble state tracker
-            min2phase.CubieCube.CornMult(scrambleInternalState, min2phase.moveCube[moveCode], tempCube);
-            min2phase.CubieCube.EdgeMult(scrambleInternalState, min2phase.moveCube[moveCode], tempCube);
-            scrambleInternalState.init(tempCube.ca, tempCube.ea); // Update temp state
+            // Apply move directly to currentInternalCubeState using the tempCube helper
+            min2phase.CubieCube.CornMult(currentInternalCubeState, min2phase.moveCube[moveCode], tempCube);
+            min2phase.CubieCube.EdgeMult(currentInternalCubeState, min2phase.moveCube[moveCode], tempCube);
+            currentInternalCubeState.init(tempCube.ca, tempCube.ea); // Update currentInternalCubeState
         } else {
-             console.warn(`Scramble move '${move}' not found in min2phase.move2str - Skipping internal update for this move.`);
+             console.warn(`Scramble move '${move}' (code: ${moveCode}) not found in min2phase.move2str or moveCube - Skipping internal update for this move.`);
         }
     }
-    // --- Assign the final scrambled state to the main state variable ---
-    currentInternalCubeState = scrambleInternalState;
+    // --- No need to reassign currentInternalCubeState, it was updated in place ---
     console.log("Internal state updated after scramble.");
     console.log("Final Scrambled Facelet State (from internal):", currentInternalCubeState.toFaceCube());
     console.log("Visual Scramble Sequence:", scrambleSequence.join(' '));
     // --- End internal state update ---
 
 
-    // Apply scramble moves visually (starting from solved visual state)
-    
+    // Apply scramble moves visually (starting from the current visual state)
     let currentMove = 0;
     function applyNextVisualMove() {
         if (currentMove < scrambleSequence.length) {
             const move = scrambleSequence[currentMove++]; // Get the correctly formatted move
-            const trimmedMove = move.trim(); // Trim for visual lookup if needed
+            const trimmedMove = move.trim(); // Trim for visual lookup
             const visualParams = moveMap[trimmedMove];
 
             if (!visualParams) {
@@ -457,14 +491,26 @@ function scrambleCube() {
                 return;
             }
 
+            const duration = 75; // Slightly faster scramble animation
+
+             // Handle double moves visually correctly
              if (trimmedMove.endsWith('2')) {
-                 const singleMove = trimmedMove.substring(0, 1);
-                 const singleParams = moveMap[singleMove];
-                 rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 50, () => {
-                    rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, 50, applyNextVisualMove);
-                });
+                 // Find the base move (e.g., 'R' from 'R2')
+                 const singleMoveNotation = trimmedMove.substring(0, 1);
+                 const singleParams = moveMap[singleMoveNotation];
+                 if (singleParams) {
+                     // Perform the first 90-degree turn
+                     rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, duration / 2, () => {
+                         // Perform the second 90-degree turn upon completion of the first
+                         rotateLayer(singleParams.axis, singleParams.layer, singleParams.angle, duration / 2, applyNextVisualMove);
+                     });
+                 } else {
+                     console.warn(`Cannot visually process double move for base ${singleMoveNotation}`);
+                     applyNextVisualMove(); // Skip if base move unknown
+                 }
              } else {
-                 rotateLayer(visualParams.axis, visualParams.layer, visualParams.angle, 75, applyNextVisualMove);
+                 // Single or prime move
+                 rotateLayer(visualParams.axis, visualParams.layer, visualParams.angle, duration, applyNextVisualMove);
              }
         } else {
              updateStatus("Scrambled. Ready.");
@@ -663,50 +709,57 @@ function solveCubeStepByStep() {
 }
 
 function startLearnMode() {
-     if (isAnimating) return;
-     resetState();
-     isLearnMode = true;
+    if (isAnimating) return;
+    resetState(); // includes enableControls() potentially
+    isLearnMode = true;
 
-     const solutionMoves = getSolutionForCurrentState(); // Get steps for the current scramble
-     if (!solutionMoves || solutionMoves.length === 0) {
-         updateStatus("Cube is already solved or cannot generate learning steps.");
-         updateInstructions([]);
-         isLearnMode = false;
-         return;
-     }
+    const solutionMoves = getSolutionForCurrentState();
+    if (!solutionMoves || solutionMoves.length === 0) {
+        updateStatus("Cube is already solved or cannot generate learning steps.");
+        updateInstructions([]);
+        isLearnMode = false;
+        return;
+    }
 
-     solveSteps = solutionMoves.map(move => ({ move: move, description: getMoveDescription(move), completed: false }));
-     currentSolveStepIndex = 0;
-     learnStepExpectedMove = solveSteps[currentSolveStepIndex].move;
-     updateStatus(`Learn Mode: Waiting for Step 1: ${learnStepExpectedMove}`);
-     updateInstructions(solveSteps, currentSolveStepIndex, solveSteps.map(s => s.completed)); // Show initial state
-     disableControls(false); // Allow manual interaction
-     learnButton.textContent = "Exit Learn Mode";
-     solveButton.disabled = true; // Disable auto-solve in learn mode
+    solveSteps = solutionMoves.map(move => ({
+        move: move,
+        description: getMoveDescription(move.trim()), // Get description from trimmed move
+        completed: false
+    }));
+    currentSolveStepIndex = 0;
+    learnStepExpectedMove = solveSteps[currentSolveStepIndex].move; // Still store the raw move
+
+    // --- UPDATED MESSAGE ---
+    const currentStep = solveSteps[currentSolveStepIndex];
+    updateStatus(`Learn Mode: Step 1 - ${currentStep.description} (${currentStep.move.trim()})`);
+    // ---
+
+    updateInstructions(solveSteps, currentSolveStepIndex, solveSteps.map(s => s.completed));
+    disableControls(false); // Keep manual interaction enabled
+    learnButton.textContent = "Exit Learn Mode";
+    solveButton.disabled = true;
 }
-
 function exitLearnMode() {
     isLearnMode = false;
     learnStepExpectedMove = null;
     solveSteps = [];
     currentSolveStepIndex = -1;
-    updateStatus("Ready");
-    updateInstructions(); // Clear instructions
+    // --- UPDATED MESSAGE ---
+    updateStatus("Exited Learn Mode. Ready.");
+    // ---
+    updateInstructions();
     learnButton.textContent = "Learn to Solve";
-    enableControls();
+    enableControls(); // Re-enable solve button etc.
 }
 
 function checkLearnMove(userMove) { // userMove comes from convertRotationToMoveNotation (e.g., "D ")
     if (!isLearnMode || isAnimating || !learnStepExpectedMove) return;
 
-    // --- >>> Normalize both moves by trimming whitespace <<< ---
     const expectedMoveTrimmed = learnStepExpectedMove.trim();
     const userMoveTrimmed = userMove.trim();
-    // --- >>> END NORMALIZATION <<< ---
 
-    console.log(`Learn Check: Expected='${expectedMoveTrimmed}', UserPerformed='${userMoveTrimmed}' (Original User Input='${userMove}')`);
+    console.log(`Learn Check: Expected='${expectedMoveTrimmed}', UserPerformed='${userMoveTrimmed}'`);
 
-    // --- >>> Compare the trimmed versions <<< ---
     if (userMoveTrimmed === expectedMoveTrimmed) {
         if (currentSolveStepIndex < solveSteps.length) {
              solveSteps[currentSolveStepIndex].completed = true;
@@ -714,38 +767,51 @@ function checkLearnMove(userMove) { // userMove comes from convertRotationToMove
         currentSolveStepIndex++;
 
         if (currentSolveStepIndex >= solveSteps.length) {
-             updateStatus("Congratulations! Cube solved (in Learn Mode).");
+             // --- UPDATED MESSAGE ---
+             updateStatus("Congratulations! You solved the cube following the steps!");
+             // ---
              updateInstructions(solveSteps, -1, solveSteps.map(s => s.completed));
              learnStepExpectedMove = null;
-             enableControls();
+             // Optionally call exitLearnMode() or just enable controls
+             enableControls(); // Re-enable solve button etc.
+             learnButton.textContent = "Learn to Solve"; // Reset button text
+             isLearnMode = false; // Ensure mode is fully exited if solved this way
         } else {
-             learnStepExpectedMove = solveSteps[currentSolveStepIndex].move; // Get next expected move (original format from solver)
-             updateStatus(`Correct! Next Step ${currentSolveStepIndex + 1}: ${learnStepExpectedMove.trim()}`); // Display trimmed version
+             learnStepExpectedMove = solveSteps[currentSolveStepIndex].move; // Get next raw move
+             const nextStep = solveSteps[currentSolveStepIndex];
+             // --- UPDATED MESSAGE ---
+             updateStatus(`Correct! Next: Step ${currentSolveStepIndex + 1} - ${nextStep.description} (${nextStep.move.trim()})`);
+             // ---
              updateInstructions(solveSteps, currentSolveStepIndex, solveSteps.map(s => s.completed));
         }
     } else {
-         // Display the expected move trimmed for clarity to the user
-         updateStatus(`Incorrect move. Expected: ${expectedMoveTrimmed}. Try again.`);
+         const expectedDescription = getMoveDescription(expectedMoveTrimmed);
+         // --- UPDATED MESSAGE ---
+         updateStatus(`Oops! That wasn't right. Expected: ${expectedDescription} (${expectedMoveTrimmed}). Try again.`);
+         // ---
+         // Maybe add a visual cue like shaking the cube slightly? (More advanced)
     }
 }
+
 function resetState() {
-    isLearnMode = false;
+    // If exiting learn mode via Reset/Scramble, ensure UI reflects it
+    if (isLearnMode) {
+        isLearnMode = false;
+        learnStepExpectedMove = null;
+        learnButton.textContent = "Learn to Solve";
+    }
     solveSteps = [];
     currentSolveStepIndex = -1;
-    learnStepExpectedMove = null;
-    learnButton.textContent = "Learn to Solve";
-    updateInstructions();
-
-    // No need to reset state string here, createCube/reset button handles internal state reset
-    enableControls();
-    // Consider calling createCube() here if a full visual reset is always desired
-    // createCube();
+    updateInstructions(); // Clear instructions
+    enableControls(); // Ensure controls are re-enabled
+    // Status is usually updated by the calling function (e.g., "Scrambling...", "Ready")
 }
+
 
 function disableControls(disableManualRotation = true) {
      scrambleButton.disabled = true;
      solveButton.disabled = true;
-     learnButton.disabled = true;
+    //  learnButton.disabled = true;
      // Optionally disable manual rotation during auto-animations
      // but keep it enabled for Learn mode (handled inside startLearnMode)
 }
@@ -919,6 +985,9 @@ function determineAndPerformDragMove(intersectData, dragVector) {
 
      // --- Convert rotation parameters to standard move notation for display/learn mode ---
     const visualMoveNotation = convertRotationToMoveNotation(rotationAxis, layerIndex, direction); // Still needed for learn mode check maybe?
+    if(visualMoveNotation == null){
+        return; // Invalid move notation, do not proceed
+    }
     const rotationAngle = direction * Math.PI / 2; // Calculate angle for visual rotation
 
     console.log(`Detected Drag Move: Axis=${rotationAxis}, Layer=${layerIndex}, Angle=${rotationAngle.toFixed(2)}, Notation=${visualMoveNotation}`);
@@ -964,25 +1033,44 @@ function convertRotationToMoveNotation(axis, layer, direction) {
 window.addEventListener('keydown', (event) => {
     if (event.code === 'Space' && !isDragging && !isAnimating) {
         isRotatingView = true;
-        controls.enableRotate = true; // Enable OrbitControls rotation
-        controls.enabled = true;      // Ensure controls are generally enabled
-        canvasContainer.style.cursor = 'grab';
+        controls.enableRotate = true;
+        controls.enabled = true;
+        // --- ADDED ---
+        canvasContainer.classList.add('grabbing'); // Use CSS for cursor
     }
 });
 
 window.addEventListener('keyup', (event) => {
     if (event.code === 'Space') {
         isRotatingView = false;
-        controls.enableRotate = false; // Disable OrbitControls rotation
-        // Controls might still be enabled if user is not dragging a face
-        canvasContainer.style.cursor = 'default';
+        controls.enableRotate = false;
+        // --- ADDED ---
+        canvasContainer.classList.remove('grabbing'); // Remove cursor style
+        // controls.enabled is managed by drag events too, don't disable here necessarily
     }
 });
 
 
+
 // --- Initialization ---
 function init() {
-    //populateColorMap();
+    updateStatus("Initializing...");
+    // --- THEME INITIALIZATION ---
+    // Check saved theme
+    const savedTheme = localStorage.getItem('rubiks-theme');
+    // Check system preference
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else if (prefersDark) {
+        applyTheme('dark');
+    } else {
+        applyTheme('light'); // Default to light
+    }
+    // Add listener for the toggle button
+    themeToggleButton.addEventListener('click', toggleTheme);
+    // --- END THEME ---
 
     updateStatus("Initializing solver data...");
     console.log("Initializing min2phase solver...");
@@ -1000,6 +1088,7 @@ function init() {
 
             updateStatus("Ready");
             enableControls();
+            updateInstructions(); // Initial size setup
        });
     } catch (e) {
          console.error("Failed to initialize solver:", e);
@@ -1011,27 +1100,25 @@ function init() {
     // --- End Solver Initialization ---
 
     // Event Listeners
-    scrambleButton.addEventListener('click', scrambleCube);
-    solveButton.addEventListener('click', solveCubeStepByStep);
+    scrambleButton.addEventListener('click', () => {
+        if (isLearnMode) exitLearnMode(); // Exit learn mode if scrambling
+        scrambleCube();
+    });
+    solveButton.addEventListener('click', () => {
+        if (isLearnMode) exitLearnMode(); // Exit learn mode if auto-solving
+        solveCubeStepByStep();
+    });
     learnButton.addEventListener('click', () => {
          if (isLearnMode) {
              exitLearnMode();
          } else {
-             startLearnMode();
+             // Ensure cube isn't animating before starting learn mode
+             if (!isAnimating) {
+                 startLearnMode();
+             }
          }
     });
-    resetViewButton.addEventListener('click', () => {
-        controls.reset();
-        camera.position.set(4, 4, 6);
-        controls.target.set(scene.position.x, scene.position.y, scene.position.z);
-        controls.update();
-        if (!isAnimating) {
-            updateStatus("Resetting cube state...");
-            createCube(); // Re-creates visual cube & resets internal state
-            resetState(); // Clear instructions, flags etc.
-            updateStatus("Ready");
-        }
-    });
+    
 
     // Use pointer events for better touch/mouse compatibility
     canvas.addEventListener('pointerdown', onPointerDown);

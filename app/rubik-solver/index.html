@@ -10,42 +10,37 @@
     <div id="container">
         <div id="controls">
             <h1>Rubik's Cube</h1>
-            <label for="cube-type-select">Cube Type:</label>
-            <select id="cube-type-select" disabled> <!-- Disabled until more types added -->
-                <option value="3" selected>3x3x3</option>
-                <!-- <option value="2">2x2x2</option> -->
-            </select>
             <button id="scramble-button">Scramble</button>
             <button id="solve-button">Solve Step-by-Step</button>
             <button id="learn-button">Learn to Solve</button>
-            <button id="reset-view-button">Reset View</button>
+            <button id="theme-toggle-button">Toggle Theme</button>
 
              <div id="instructions">
                 <h2>Instructions</h2>
                 <div id="instruction-list">
-                    <!-- Instructions will be added here -->
                      <p>Click and drag faces to rotate them.</p>
                      <p>Hold SPACEBAR and drag mouse to rotate the view.</p>
                 </div>
             </div>
-             <div id="status">
-                 <p id="status-text">Ready</p>
-             </div>
+
+             <!-- Status Div removed from here -->
         </div>
         <div id="canvas-container">
             <canvas id="rubiks-canvas"></canvas>
+            <!-- Status Div MOVED here -->
+            <div id="status">
+                 <p id="status-text">Loading...</p>
+            </div>
         </div>
     </div>
 
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/18.6.4/tween.umd.js"></script>
-    <!-- OrbitControls (Optional but recommended for view rotation) -->
     <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    
-    <!-- <script src="kociemba.js"></script> -->
+
+    <!-- Solver and Main Script -->
     <script src="min2phase.js"></script>
-    <!-- Main Script -->
     <script src="cube.js"></script>
 </body>
 </html>

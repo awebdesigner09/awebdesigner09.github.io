@@ -1,119 +1,223 @@
+/* CSS Variables for Theming */
+:root {
+    --bg-color: #f0f0f0;
+    --container-bg: #ffffff;
+    --controls-bg: #ffffff;
+    --text-color: #333333;
+    --border-color: #cccccc;
+    --border-light-color: #eeeeee;
+    --button-bg: #f8f8f8;
+    --button-hover-bg: #eeeeee;
+    --button-active-bg: #dddddd;
+    --button-text-color: #333333;
+    --disabled-opacity: 0.6;
+    --shadow-color: rgba(0, 0, 0, 0.2);
+    --instruction-bg: #f9f9f9;
+    --instruction-border: #eeeeee;
+    --step-bg: #ffffff;
+    --step-current-bg: #e0f7fa;
+    --step-completed-bg: #c8e6c9;
+    --step-completed-text: #555555;
+    /* Status colors */
+    --status-bg-color: rgba(0, 0, 0, 0.6);
+    --status-text-color: #ffffff;
+    --grab-cursor-url: default;
+}
+
+/* Dark Mode Theme */
+body.dark-mode {
+    --bg-color: #2d2d2d;
+    --container-bg: #3c3c3c;
+    --controls-bg: #3c3c3c;
+    --text-color: #e0e0e0;
+    --border-color: #555555;
+    --border-light-color: #444444;
+    --button-bg: #505050;
+    --button-hover-bg: #606060;
+    --button-active-bg: #707070;
+    --button-text-color: #e0e0e0;
+    --disabled-opacity: 0.5;
+    --shadow-color: rgba(0, 0, 0, 0.4);
+    --instruction-bg: #424242;
+    --instruction-border: #505050;
+    --step-bg: #484848;
+    --step-current-bg: #005f7a;
+    --step-completed-bg: #38703a;
+    --step-completed-text: #bbbbbb;
+    /* Status colors */
+    --status-bg-color: rgba(255, 255, 255, 0.7); /* Lighter background for dark mode */
+    --status-text-color: #000000; /* Darker text for contrast */
+    --grab-cursor-url: default;
+}
+
 body {
     font-family: sans-serif;
     margin: 0;
     overflow: hidden;
-    background-color: #f0f0f0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    /* Removed flex centering */
     height: 100vh;
+    width: 100vw; /* Ensure body takes full width */
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #container {
     display: flex;
-    width: 95vw;
-    height: 90vh;
-    background-color: #fff;
-    box-shadow: 0 0 15px rgba(0,0,0,0.2);
-    border-radius: 8px;
+    width: 100vw;  /* Fill viewport width */
+    height: 100vh; /* Fill viewport height */
+    background-color: var(--container-bg);
+    /* Removed box-shadow and border-radius */
+    transition: background-color 0.3s ease;
 }
 
 #controls {
-    width: 300px;
+    width: 280px; /* Slightly narrower? Adjust as needed */
     padding: 20px;
     box-sizing: border-box;
-    border-right: 1px solid #ccc;
+    /* Removed border-right */
+    background-color: var(--controls-bg);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    transition: background-color 0.3s ease;
+    z-index: 5; /* Ensure controls are conceptually above canvas container background */
 }
 
-#controls h1, #controls h2 {
+#controls h1 {
     text-align: center;
     margin-top: 0;
+    margin-bottom: 15px;
+    color: var(--text-color);
+}
+
+#controls h2 {
+     text-align: center;
+     margin-top: 0;
+     margin-bottom: 10px;
+     color: var(--text-color);
 }
 
 #controls label {
     margin-top: 10px;
     font-weight: bold;
+    color: var(--text-color);
 }
 
-#controls select, #controls button {
+#controls select,
+#controls button {
     padding: 10px;
     margin-top: 5px;
     margin-bottom: 10px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     border-radius: 4px;
     cursor: pointer;
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 #controls button:hover {
-    background-color: #eee;
+    background-color: var(--button-hover-bg);
 }
 #controls button:active {
-    background-color: #ddd;
+    background-color: var(--button-active-bg);
 }
 #controls button:disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: var(--disabled-opacity);
+    /* Keep background/color consistent when disabled */
+    /* background-color: var(--button-bg); */
+    /* color: var(--button-text-color); */
 }
 
 
 #instructions {
     margin-top: 20px;
-    flex-grow: 1; /* Take remaining space */
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border-light-color);
     padding-top: 15px;
+    transition: border-color 0.3s ease;
+    /* Removed flex-grow */
+    /* margin-bottom: auto; */ /* Let it flow naturally */
 }
 
 #instruction-list {
      font-size: 0.9em;
-     max-height: 300px; /* Limit height if needed */
+     max-height: 300px; /* Adjust as needed */
      overflow-y: auto;
-     border: 1px solid #eee;
+     border: 1px solid var(--instruction-border);
      padding: 10px;
-     background-color: #f9f9f9;
-     min-height: 50px; /* Ensure it's visible */
+     background-color: var(--instruction-bg);
+     min-height: 50px;
+     border-radius: 4px;
+     transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+#instruction-list p {
+    padding: 5px;
+    margin: 0 0 5px 0;
+    color: var(--text-color);
 }
 
 #instruction-list .step {
     padding: 5px;
     margin-bottom: 3px;
     border-radius: 3px;
-    background-color: #fff;
-    transition: background-color 0.3s ease;
+    background-color: var(--step-bg);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 #instruction-list .step.current {
-    background-color: #e0f7fa; /* Light blue for current step */
+    background-color: var(--step-current-bg);
     font-weight: bold;
+    /* color: var(--text-color); */ /* Inherit or specify contrast */
 }
 #instruction-list .step.completed {
-    background-color: #c8e6c9; /* Light green for completed */
+    background-color: var(--step-completed-bg);
     text-decoration: line-through;
-    color: #555;
+    color: var(--step-completed-text);
 }
 
 
 #canvas-container {
-    flex-grow: 1; /* Take remaining space */
-    position: relative; /* Needed for canvas positioning */
-    display: flex; /* Use flex to center canvas if needed */
+    flex-grow: 1;
+    position: relative; /* Needed for absolute positioning of status */
+    display: flex;
     justify-content: center;
     align-items: center;
-    overflow: hidden; /* Clip canvas if it exceeds container */
+    overflow: hidden; /* Keep clipping canvas */
+    background-color: var(--bg-color); /* Match body background */
+     transition: background-color 0.3s ease;
+}
+
+#canvas-container.grabbing {
+    cursor: var(--grab-cursor-url), grab;
 }
 
 #rubiks-canvas {
-    display: block; /* Remove extra space below canvas */
+    display: block;
     max-width: 100%;
     max-height: 100%;
 }
 
-#status {
-    margin-top: auto; /* Push status to the bottom */
-    padding-top: 10px;
-    border-top: 1px solid #eee;
-    font-size: 0.8em;
-    color: #555;
+/* --- NEW STATUS STYLING --- */
+#canvas-container > #status { /* Target status inside canvas container */
+    position: absolute;       /* Position relative to canvas-container */
+    bottom: 15px;             /* Distance from bottom */
+    left: 50%;                /* Center horizontally */
+    transform: translateX(-50%); /* Adjust for own width */
+    z-index: 10;              /* Ensure it's above the canvas */
+    padding: 6px 12px;       /* Padding inside the status box */
+    background-color: var(--status-bg-color); /* Use variable */
+    color: var(--status-text-color);          /* Use variable */
+    border-radius: 5px;       /* Rounded corners */
+    font-size: 0.9em;
     text-align: center;
+    /* Removed margin-top, border-top */
+    transition: background-color 0.3s ease, color 0.3s ease; /* Smooth theme transition */
+    pointer-events: none; /* Prevent status from blocking mouse events on canvas */
 }
+#canvas-container > #status p {
+    margin: 0; /* Remove default paragraph margin */
+}
+/* --- END NEW STATUS STYLING --- */
