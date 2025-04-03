@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>GLB Character Speaker</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+        #ui { position: absolute; top: 10px; left: 10px; z-index: 1; background: rgba(0,0,0,0.5); padding: 10px; color: white;}
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <textarea id="textInput" rows="4" cols="50">Hello, I am your 3D character.</textarea><br>
+        <button id="speakButton">Speak</button>
+    </div>
+    <canvas id="characterCanvas"></canvas>
+
+    <!-- Use CDN or local paths -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://esm.sh/three@0.150.1",
+                "three/addons/": "https://esm.sh/three@0.150.1/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="app.js"></script>
+</body>
+</html>
