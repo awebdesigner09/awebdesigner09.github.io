@@ -34,7 +34,7 @@ function init() {
     // Load Model
     const loader = new GLTFLoader();
     loader.load(
-        'character.glb', // <--- IMPORTANT: Set correct path
+        'character3.glb', // <--- IMPORTANT: Set correct path
         (gltf) => {
             const model = gltf.scene;
             scene.add(model);
@@ -48,10 +48,44 @@ function init() {
 
                     // --- EXAMPLE: Map visemes to indices (ADJUST NAMES!) ---
                     if (characterMesh.morphTargetDictionary) {
-                        visemeMap['A'] = characterMesh.morphTargetDictionary['viseme_PP']; // Example: 'PP' often covers A, I, U sounds
-                        visemeMap['O'] = characterMesh.morphTargetDictionary['viseme_O'];  // Example: 'O' covers O, W sounds
-                        visemeMap['F'] = characterMesh.morphTargetDictionary['viseme_FF']; // Example: 'FF' covers F, V sounds
-                        visemeMap['M'] = characterMesh.morphTargetDictionary['viseme_MBP'];// Example: 'MBP' covers M, B, P, Silence
+                        // visemeMap['A'] = characterMesh.morphTargetDictionary['viseme_PP']; // Example: 'PP' often covers A, I, U sounds
+                        // visemeMap['O'] = characterMesh.morphTargetDictionary['viseme_O'];  // Example: 'O' covers O, W sounds
+                        // visemeMap['F'] = characterMesh.morphTargetDictionary['viseme_FF']; // Example: 'FF' covers F, V sounds
+                        // visemeMap['M'] = characterMesh.morphTargetDictionary['viseme_MBP'];// Example: 'MBP' covers M, B, P, Silence
+                        
+                        // Aviable viseme names in glb file
+                        //
+                        // viseme_CH: 11
+                        // viseme_DD: 9
+                        // viseme_E: 16
+                        // viseme_FF: 7
+                        // viseme_I: 17
+                        // viseme_O: 18
+                        // viseme_PP: 6
+                        // viseme_RR: 14
+                        // viseme_SS: 12
+                        // viseme_TH: 8
+                        // viseme_U: 19
+                        // viseme_aa: 15
+                        // viseme_kk: 10
+                        // viseme_nn: 13
+                        // viseme_sil: 5
+                        visemeMap['CH'] = characterMesh.morphTargetDictionary['viseme_CH'];
+                        visemeMap['DD'] = characterMesh.morphTargetDictionary['viseme_DD'];
+                        visemeMap['E'] = characterMesh.morphTargetDictionary['viseme_E'];
+                        visemeMap['F'] = characterMesh.morphTargetDictionary['viseme_FF'];
+                        visemeMap['I'] = characterMesh.morphTargetDictionary['viseme_I'];
+                        visemeMap['O'] = characterMesh.morphTargetDictionary['viseme_O'];
+                        visemeMap['A'] = characterMesh.morphTargetDictionary['viseme_PP'];
+                        visemeMap['M'] = characterMesh.morphTargetDictionary['viseme_RR'];
+                        visemeMap['SS'] = characterMesh.morphTargetDictionary['viseme_SS'];
+                        visemeMap['TH'] = characterMesh.morphTargetDictionary['viseme_TH'];
+                        visemeMap['U'] = characterMesh.morphTargetDictionary['viseme_U'];
+                        visemeMap['aa'] = characterMesh.morphTargetDictionary['viseme_aa'];
+                        visemeMap['kk'] = characterMesh.morphTargetDictionary['viseme_kk'];
+                        visemeMap['nn'] = characterMesh.morphTargetDictionary['viseme_nn'];
+                        visemeMap['sil'] = characterMesh.morphTargetDictionary['viseme_sil'];
+                        
                         // ... Add mappings for other key shapes your model has (e.g., E, TH, L)
                     } else {
                          console.error("Morph Target Dictionary not found on mesh!");
